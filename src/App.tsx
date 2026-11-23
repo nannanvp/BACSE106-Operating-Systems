@@ -367,7 +367,7 @@ export default function App() {
   const isFullWidthSyllabus = activeView === 'syllabus';
   const containerClass = isFullWidthSyllabus
     ? 'w-full px-4 sm:px-7 lg:px-9 2xl:px-12'
-    : 'manual-content-container px-4 sm:px-6 2xl:px-8';
+    : 'w-full max-w-[1600px] 2xl:max-w-[2100px] mx-auto px-4 sm:px-6 2xl:px-8';
 
   // 7-Division Fore-Edge Tab Rail with proportional tab heights scaled to module lecture hours
   // M1: 6h (h-20 = 80px), M2: 10h (h-32 = 128px), M3: 10h (h-32 = 128px), M4: 10h (h-32 = 128px), M5: 9h (h-28 = 112px), LABS: h-20, MOCK: h-20
@@ -484,7 +484,7 @@ export default function App() {
   const activeAccentHex = darkMode ? activeAccentEntry.darkHex : activeAccentEntry.hex;
 
   return (
-    <div className="min-h-screen bg-[#26231E] dark:bg-[#100F0D] text-[#1C1B18] dark:text-[#E6E2DA] p-0 xl:p-3 transition-colors duration-200 flex justify-center">
+    <div className="min-h-screen flex bg-[#26231E] dark:bg-[#100F0D] text-[#1C1B18] dark:text-[#E6E2DA] p-0 xl:p-3 transition-colors duration-200">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2.5 focus:left-4 focus:z-50 focus:px-3.5 focus:py-2 focus:bg-[#E5B82E] focus:text-[#1C1B18] focus:border focus:border-[#1C1B18] focus:text-xs focus:font-mono focus:font-semibold focus:rounded-[4px]"
@@ -492,167 +492,164 @@ export default function App() {
         Skip to main content
       </a>
 
-      {/* Centered Archival Reference Manual Shell Assembly (Responsive 16:9 / 16:10 / 2560x1600) */}
-      <div className="manual-shell-assembly flex min-w-0 min-h-screen xl:min-h-0">
-        {/* Open Manual Section Board */}
-        <div className="flex-1 flex bg-[#EAE4D7] dark:bg-[#171613] border border-[#1C1B18] dark:border-[#312E29] rounded-none xl:rounded-l-[6px] min-w-0 transition-colors duration-200">
-          {/* Left Punched Ring-Binder Spine Margin (3 Circular Punches + Vertical Rotated Folio Stamp) */}
-          <aside
-            aria-hidden="true"
-            className="binder-spine-margin hidden xl:flex flex-col items-center justify-between py-12 w-11 border-r border-[#C5BEB0] dark:border-[#312E29] bg-[#E5DEC9]/60 dark:bg-[#1C1A16] shrink-0 select-none transition-colors duration-200"
+      {/* Open Manual Section Board */}
+      <div className="flex-1 flex bg-[#EAE4D7] dark:bg-[#171613] border border-[#1C1B18] dark:border-[#312E29] rounded-none xl:rounded-l-[6px] min-w-0 transition-colors duration-200">
+        {/* Left Punched Ring-Binder Spine Margin (3 Circular Punches + Vertical Rotated Folio Stamp) */}
+        <aside
+          aria-hidden="true"
+          className="binder-spine-margin hidden xl:flex flex-col items-center justify-between py-12 w-11 border-r border-[#C5BEB0] dark:border-[#312E29] bg-[#E5DEC9]/60 dark:bg-[#1C1A16] shrink-0 select-none transition-colors duration-200"
+        >
+          <div className="binder-hole" />
+          <div className="binder-hole" />
+          <div
+            className="font-mono text-[10px] tracking-[0.22em] text-[#6E695D] dark:text-[#8F897D] uppercase whitespace-nowrap"
+            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
           >
-            <div className="binder-hole" />
-            <div className="binder-hole" />
-            <div
-              className="font-mono text-[10px] tracking-[0.22em] text-[#6E695D] dark:text-[#8F897D] uppercase whitespace-nowrap"
-              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-            >
-              BACSE106 · OPERATING SYSTEMS · VIT CHENNAI
-            </div>
-            <div className="binder-hole" />
-          </aside>
+            BACSE106 · OPERATING SYSTEMS · VIT CHENNAI
+          </div>
+          <div className="binder-hole" />
+        </aside>
 
-          {/* Primary Manual Sheet Content */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Top Manual Specification Header (Strict 3-Zone Contract) */}
-            <header className="sticky top-0 z-30 bg-[#EAE4D7]/95 dark:bg-[#171613]/95 backdrop-blur-xs border-b border-[#1C1B18] dark:border-[#312E29] transition-colors duration-200">
-              <div className={`${containerClass} h-14 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6`}>
-                {/* Zone 1: Course Identity Stamp */}
+        {/* Primary Manual Sheet Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top Manual Specification Header (Strict 3-Zone Contract) */}
+          <header className="sticky top-0 z-30 bg-[#EAE4D7]/95 dark:bg-[#171613]/95 backdrop-blur-xs border-b border-[#1C1B18] dark:border-[#312E29] transition-colors duration-200">
+            <div className="w-full px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6">
+              {/* Zone 1: Course Identity Stamp */}
+              <button
+                type="button"
+                onClick={() => handleNavigateView('standing')}
+                className="flex items-center gap-2 sm:gap-2.5 text-left shrink-0 group rounded-[3px] focus:outline-none focus:ring-1 focus:ring-[#1C1B18]"
+                title="Return to Diagnostic Standing"
+              >
+                <span
+                  className="w-2 sm:w-2.5 h-6 sm:h-7 rounded-[2px] shrink-0 border border-[#1C1B18]/30 dark:border-[#312E29]"
+                  style={{ backgroundColor: activeAccentHex }}
+                  aria-hidden="true"
+                />
+                <span className="text-sm sm:text-base lg:text-lg font-display font-extrabold tracking-[0.05em] sm:tracking-[0.08em] uppercase text-[#1C1B18] dark:text-[#E6E2DA] whitespace-nowrap">
+                  BACSE106 Sprint
+                </span>
+              </button>
+
+              {/* Zone 2: Mode Navigation Bar (Desktop lg+) */}
+              <nav aria-label="Primary manual sections" className="hidden lg:flex items-center gap-1.5 xl:gap-3">
+                {NAV_ITEMS.map((item) => {
+                  const isActive = activeView === item.id;
+                  const activeBorder = item.isStanding
+                    ? 'text-[#2E6F5E] dark:text-[#4CA38C] font-bold border-[#2E6F5E] dark:border-[#4CA38C]'
+                    : 'text-[#1C1B18] dark:text-[#FAF7F0] font-semibold border-[#1C1B18] dark:border-[#FAF7F0]';
+                  const idleStyle = item.isStanding
+                    ? 'text-[#2E6F5E] dark:text-[#4CA38C] border-transparent hover:border-[#2E6F5E]/50 font-semibold'
+                    : 'text-[#434038] dark:text-[#B5AEA0] border-transparent hover:text-[#1C1B18] dark:hover:text-[#FAF7F0]';
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleNavigateView(item.id)}
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label={
+                        item.isMock && sortedWeakTopics.length > 0
+                          ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
+                          : undefined
+                      }
+                      title={
+                        item.isMock && sortedWeakTopics.length > 0
+                          ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
+                          : undefined
+                      }
+                      className={`inline-flex items-center ${
+                        item.isMock && sortedWeakTopics.length > 0 ? 'gap-2' : 'gap-1.5'
+                      } py-1 text-xs font-mono uppercase tracking-[0.08em] step-hinge whitespace-nowrap shrink-0 border-b-2 ${
+                        isActive ? activeBorder : idleStyle
+                      }`}
+                    >
+                      {item.isStanding && (
+                        <Gauge className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      {item.isMock && (
+                        <span className="relative inline-flex items-center shrink-0">
+                          <ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                          {sortedWeakTopics.length > 0 && (
+                            <span
+                              data-testid="nav-weak-topics-badge"
+                              aria-hidden="true"
+                              className="absolute -top-2 -right-2.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-mono font-extrabold leading-none inline-flex items-center justify-center border border-[#FAF7F0] tabular-nums"
+                            >
+                              {sortedWeakTopics.length}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Zone 3: Live Countdown Timer, Formula (^K) Trigger, Theme Toggle & Primary CTA */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="hidden xl:block shrink-0">
+                  <ExamCountdown variant="compact" />
+                </div>
+
+                {/* Formula (^K) Modal Trigger */}
                 <button
                   type="button"
-                  onClick={() => handleNavigateView('standing')}
-                  className="flex items-center gap-2 sm:gap-2.5 text-left shrink-0 group rounded-[3px] focus:outline-none focus:ring-1 focus:ring-[#1C1B18]"
-                  title="Return to Diagnostic Standing"
+                  data-testid="formula-quickref-trigger"
+                  onClick={() => setFormulaDrawerOpen(true)}
+                  title="Open Formula Quick-Reference (Ctrl+K / Cmd+K)"
+                  aria-label="Open Formula Quick-Reference"
+                  className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-mono font-semibold uppercase tracking-[0.05em] bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] text-[#1C1B18] dark:text-[#E6E2DA] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
                 >
-                  <span
-                    className="w-2.5 h-7 sm:h-8 rounded-[2px] shrink-0 border border-[#1C1B18]/30 dark:border-[#312E29]"
-                    style={{ backgroundColor: activeAccentHex }}
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <div className="text-xs sm:text-sm font-display font-extrabold tracking-[0.06em] uppercase text-[#1C1B18] dark:text-[#E6E2DA] leading-none">
-                      {COURSE_META.code} · FAT SPRINT
-                    </div>
-                    <div className="text-[10px] sm:text-[11px] font-mono font-medium text-[#6E695D] dark:text-[#8F897D] tracking-tight leading-tight mt-0.5 whitespace-nowrap">
-                      {COURSE_META.title} · {COURSE_META.institution}
-                    </div>
-                  </div>
+                  <Sigma className="w-3.5 h-3.5 text-[#E06D2B] dark:text-[#EF8347] shrink-0" aria-hidden="true" />
+                  <span className="hidden sm:inline">Formulas</span>
+                  <kbd className="hidden sm:inline px-1 py-0.2 bg-[#EAE4D7] dark:bg-[#171613] border border-[#C5BEB0] dark:border-[#312E29] rounded-[2px] text-[10px] text-[#6E695D] dark:text-[#8F897D]">
+                    ^K
+                  </kbd>
                 </button>
 
-                {/* Zone 2: Mode Navigation Bar (Desktop lg+) */}
-                <nav aria-label="Primary manual sections" className="hidden lg:flex items-center gap-1.5 xl:gap-3">
-                  {NAV_ITEMS.map((item) => {
-                    const isActive = activeView === item.id;
-                    const Icon = item.icon;
-                    const activeBorder = item.isStanding
-                      ? 'text-[#2E6F5E] dark:text-[#4CA38C] font-bold border-[#2E6F5E] dark:border-[#4CA38C]'
-                      : 'text-[#1C1B18] dark:text-[#FAF7F0] font-semibold border-[#1C1B18] dark:border-[#FAF7F0]';
-                    const idleStyle = item.isStanding
-                      ? 'text-[#2E6F5E] dark:text-[#4CA38C] border-transparent hover:border-[#2E6F5E]/50 font-semibold'
-                      : 'text-[#434038] dark:text-[#B5AEA0] border-transparent hover:text-[#1C1B18] dark:hover:text-[#FAF7F0]';
+                {/* Theme Toggle */}
+                <button
+                  type="button"
+                  data-testid="dark-mode-toggle"
+                  onClick={handleToggleDarkMode}
+                  aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                  aria-pressed={darkMode}
+                  title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
+                >
+                  {darkMode ? (
+                    <Sun className="w-4 h-4 text-[#E5B82E]" aria-hidden="true" />
+                  ) : (
+                    <Moon className="w-4 h-4 text-[#1C1B18]" aria-hidden="true" />
+                  )}
+                </button>
 
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => handleNavigateView(item.id)}
-                        aria-current={isActive ? 'page' : undefined}
-                        aria-label={
-                          item.isMock && sortedWeakTopics.length > 0
-                            ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
-                            : undefined
-                        }
-                        title={
-                          item.isMock && sortedWeakTopics.length > 0
-                            ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
-                            : undefined
-                        }
-                        className={`inline-flex items-center gap-1.5 py-1 text-xs font-mono uppercase tracking-[0.08em] step-hinge whitespace-nowrap shrink-0 border-b-2 ${
-                          isActive ? activeBorder : idleStyle
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                        {item.isMock && (
-                          <span className="relative inline-flex items-center shrink-0">
-                            {sortedWeakTopics.length > 0 && (
-                              <span
-                                data-testid="nav-weak-topics-badge"
-                                aria-hidden="true"
-                                className="absolute -top-2 -right-2.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-mono font-extrabold leading-none inline-flex items-center justify-center border border-[#FAF7F0] tabular-nums"
-                              >
-                                {sortedWeakTopics.length}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                        <span>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </nav>
-
-                {/* Zone 3: Live Countdown Timer, Formula (^K) Trigger, Theme Toggle & Primary CTA */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <div className="hidden md:block">
-                    <ExamCountdown variant="compact" />
-                  </div>
-
-                  {/* Formula (^K) Modal Trigger */}
-                  <button
-                    type="button"
-                    data-testid="formula-quickref-trigger"
-                    onClick={() => setFormulaDrawerOpen(true)}
-                    title="Open Formula Quick-Reference (Ctrl+K / Cmd+K)"
-                    aria-label="Open Formula Quick-Reference"
-                    className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-mono font-semibold uppercase tracking-[0.05em] bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] text-[#1C1B18] dark:text-[#E6E2DA] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
-                  >
-                    <Sigma className="w-3.5 h-3.5 text-[#E06D2B] dark:text-[#EF8347]" aria-hidden="true" />
-                    <span className="hidden xl:inline">Formulas</span>
-                    <kbd className="hidden sm:inline px-1 py-0.2 bg-[#EAE4D7] dark:bg-[#171613] border border-[#C5BEB0] dark:border-[#312E29] rounded-[2px] text-[10px] text-[#6E695D] dark:text-[#8F897D]">
-                      ^K
-                    </kbd>
-                  </button>
-
-                  {/* Theme Toggle */}
-                  <button
-                    type="button"
-                    data-testid="dark-mode-toggle"
-                    onClick={handleToggleDarkMode}
-                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                    aria-pressed={darkMode}
-                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                    className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
-                  >
-                    {darkMode ? (
-                      <Sun className="w-4 h-4 text-[#E5B82E]" aria-hidden="true" />
-                    ) : (
-                      <Moon className="w-4 h-4 text-[#1C1B18]" aria-hidden="true" />
-                    )}
-                  </button>
-
-                  {/* Primary FAT Mock CTA */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMockSubView(sortedWeakTopics.length > 0 ? 'weak' : 'mcq');
-                      handleNavigateView('mock');
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-mono font-semibold uppercase tracking-[0.05em] sm:tracking-[0.06em] text-[#1C1B18] bg-[#E5B82E] hover:bg-[#d8aa22] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge whitespace-nowrap shrink-0"
-                  >
-                    <span>Start FAT Mock →</span>
-                    {sortedWeakTopics.length > 0 && (
-                      <span
-                        data-testid="header-weak-topics-badge"
-                        aria-hidden="true"
-                        className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono font-extrabold leading-none inline-flex items-center justify-center tabular-nums"
-                      >
-                        {sortedWeakTopics.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
+                {/* Primary FAT Mock CTA */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMockSubView(sortedWeakTopics.length > 0 ? 'weak' : 'mcq');
+                    handleNavigateView('mock');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-mono font-semibold uppercase tracking-[0.05em] sm:tracking-[0.06em] text-[#1C1B18] bg-[#E5B82E] hover:bg-[#d8aa22] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge whitespace-nowrap shrink-0"
+                >
+                  <span>Start FAT Mock →</span>
+                  {sortedWeakTopics.length > 0 && (
+                    <span
+                      data-testid="header-weak-topics-badge"
+                      aria-hidden="true"
+                      className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono font-extrabold leading-none inline-flex items-center justify-center tabular-nums"
+                    >
+                      {sortedWeakTopics.length}
+                    </span>
+                  )}
+                </button>
               </div>
-            </header>
+            </div>
+          </header>
 
             {/* Mobile / Tablet Scrollable Navigation Bar */}
             <nav
@@ -847,7 +844,6 @@ export default function App() {
             );
           })}
         </aside>
-      </div>
 
       {/* Global Floating Formula Quick Reference Widget (Ctrl+K / Cmd+K) */}
       <FormulaQuickRef

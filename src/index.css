@@ -621,13 +621,12 @@ html.dark .diagram-canvas-plate {
 /* Base container sizing defaults */
 .manual-shell-assembly {
   width: 100%;
-  max-width: 1600px;
   transition: max-width 0.25s ease-out;
 }
 
 .manual-content-container {
   width: 100%;
-  max-width: 80rem; /* 1280px */
+  max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
   transition: max-width 0.25s ease-out;
@@ -640,11 +639,11 @@ html.dark .diagram-canvas-plate {
 @media (aspect-ratio: 16/10),
        (min-aspect-ratio: 15/10) and (max-aspect-ratio: 17/10) {
   .manual-shell-assembly {
-    max-width: min(97vw, 2180px);
+    width: 100%;
   }
 
   .manual-content-container {
-    max-width: min(94vw, 1920px);
+    max-width: min(96vw, 2040px);
   }
 
   .lab-stage-canvas {
@@ -659,11 +658,11 @@ html.dark .diagram-canvas-plate {
 }
 
 html[data-aspect-ratio="16:10"] .manual-shell-assembly {
-  max-width: min(97vw, 2180px);
+  width: 100%;
 }
 
 html[data-aspect-ratio="16:10"] .manual-content-container {
-  max-width: min(94vw, 1920px);
+  max-width: min(96vw, 2040px);
 }
 
 html[data-aspect-ratio="16:10"] .lab-stage-canvas {
@@ -677,11 +676,11 @@ html[data-aspect-ratio="16:10"] .lab-stage-canvas {
 @media (aspect-ratio: 16/9),
        (min-aspect-ratio: 17/10) and (max-aspect-ratio: 19/10) {
   .manual-shell-assembly {
-    max-width: min(96vw, 1980px);
+    width: 100%;
   }
 
   .manual-content-container {
-    max-width: min(93vw, 1780px);
+    max-width: min(95vw, 1860px);
   }
 
   .lab-stage-canvas {
@@ -690,11 +689,11 @@ html[data-aspect-ratio="16:10"] .lab-stage-canvas {
 }
 
 html[data-aspect-ratio="16:9"] .manual-shell-assembly {
-  max-width: min(96vw, 1980px);
+  width: 100%;
 }
 
 html[data-aspect-ratio="16:9"] .manual-content-container {
-  max-width: min(93vw, 1780px);
+  max-width: min(95vw, 1860px);
 }
 
 html[data-aspect-ratio="16:9"] .lab-stage-canvas {
@@ -708,7 +707,7 @@ html[data-aspect-ratio="16:9"] .lab-stage-canvas {
 @media (min-width: 2000px) and (min-height: 1200px),
        (min-width: 2400px) {
   .manual-shell-assembly {
-    max-width: 2460px !important;
+    width: 100% !important;
   }
 
   .manual-content-container {
@@ -744,7 +743,7 @@ html[data-aspect-ratio="16:9"] .lab-stage-canvas {
 
 html[data-is-2560x1600="true"] .manual-shell-assembly,
 html[data-resolution-tier="wqxga"] .manual-shell-assembly {
-  max-width: 2460px !important;
+  width: 100% !important;
 }
 
 html[data-is-2560x1600="true"] .manual-content-container,
