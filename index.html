@@ -39,6 +39,44 @@
             isDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
           }
           document.documentElement.classList.toggle('dark', isDark);
+
+          function updateAspect() {
+            var w = window.innerWidth || document.documentElement.clientWidth || 1920;
+            var h = window.innerHeight || document.documentElement.clientHeight || 1080;
+            var sw = window.screen ? window.screen.width : w;
+            var sh = window.screen ? window.screen.height : h;
+            var dpr = window.devicePixelRatio || 1;
+            var physW = Math.round(sw * dpr);
+            var physH = Math.round(sh * dpr);
+            var ratio = w / (h || 1);
+
+            var aspect = 'standard';
+            if (ratio >= 1.52 && ratio <= 1.68) {
+              aspect = '16:10';
+            } else if (ratio >= 1.69 && ratio <= 1.88) {
+              aspect = '16:9';
+            } else if (ratio > 1.88) {
+              aspect = 'ultrawide';
+            }
+
+            var is2560x1600 =
+              (sw === 2560 && sh === 1600) ||
+              (physW === 2560 && physH === 1600) ||
+              (w >= 1700 && w <= 2600 && ratio >= 1.55 && ratio <= 1.65);
+
+            var root = document.documentElement;
+            root.setAttribute('data-aspect-ratio', aspect);
+            root.setAttribute('data-is-2560x1600', is2560x1600 ? 'true' : 'false');
+            if (is2560x1600 || w >= 2200) {
+              root.setAttribute('data-resolution-tier', 'wqxga');
+            } else if (w >= 1800) {
+              root.setAttribute('data-resolution-tier', 'qhd');
+            } else {
+              root.setAttribute('data-resolution-tier', 'standard');
+            }
+          }
+          updateAspect();
+          window.addEventListener('resize', updateAspect, { passive: true });
         } catch (e) {}
       })();
     </script>

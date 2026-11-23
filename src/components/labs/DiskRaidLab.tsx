@@ -303,7 +303,7 @@ export const DiskRaidLab: React.FC = () => {
         {/* =========================================================================
             LEFT 7 COLUMNS: Visual Cylinder Track Seek Graph, KPIs, Rotational Latency, RAID
             ========================================================================= */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 space-y-4 lab-stage-canvas">
           {/* Visual Cylinder Track Seek Graph */}
           <div className="diagram-canvas-plate p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--rule-hairline)] pb-2.5">

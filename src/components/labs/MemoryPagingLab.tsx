@@ -269,7 +269,7 @@ export const MemoryPagingLab: React.FC = () => {
       {mode === 'replacement' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left 7 Columns: Interactive Allocation Matrix & Visual Stage */}
-          <div className="lg:col-span-7 space-y-4 min-w-0">
+          <div className="lg:col-span-7 space-y-4 min-w-0 lab-stage-canvas">
             {/* 4-Algorithm Comparative Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs tabular-nums">
               {(
@@ -377,8 +377,8 @@ export const MemoryPagingLab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Horizontal Scrollable Table Matrix */}
-              <div className="overflow-x-auto border border-[var(--rule-hairline)] rounded-[2px] max-w-full">
+              {/* Horizontal Scrollable Table Matrix (Responsive on 16:10 / 2560x1600) */}
+              <div className="overflow-x-auto wqxga-frame-matrix-scroll border border-[var(--rule-hairline)] rounded-[2px] max-w-full">
                 <table className="w-full text-center border-collapse font-mono text-xs tabular-nums select-none">
                   <thead>
                     <tr className="bg-[var(--bg-recessed)] border-b border-[var(--rule-strong)]">

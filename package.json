@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/coreEngines.test.ts src/utils/osEngines.test.ts src/data/courseIntegrity.test.ts src/utils/predictionEngine.test.ts"
+    "test": "tsx --test src/utils/coreEngines.test.ts src/utils/osEngines.test.ts src/data/courseIntegrity.test.ts src/utils/predictionEngine.test.ts src/utils/aspectRatioEngine.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

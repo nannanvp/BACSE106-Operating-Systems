@@ -46,6 +46,7 @@ import {
   markWeakTopicReviewed,
   recordWeakTopicMiss,
 } from './utils/weakTopicsEngine';
+import { applyAspectRatioToDocument, computeAspectRatioProfile } from './utils/aspectRatioEngine';
 
 export type AppView = 'standing' | 'sprint' | 'syllabus' | 'reference' | 'prediction' | 'labs' | 'mock';
 export type ModuleId = 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
@@ -345,10 +346,28 @@ export default function App() {
     [srsProfile]
   );
 
+  // Automatic Aspect Ratio & 2560x1600 Display Engine Hook
+  useEffect(() => {
+    const handleAspect = () => {
+      const profile = computeAspectRatioProfile(
+        window.innerWidth,
+        window.innerHeight,
+        window.screen ? window.screen.width : window.innerWidth,
+        window.screen ? window.screen.height : window.innerHeight,
+        window.devicePixelRatio || 1
+      );
+      applyAspectRatioToDocument(profile);
+    };
+
+    handleAspect();
+    window.addEventListener('resize', handleAspect, { passive: true });
+    return () => window.removeEventListener('resize', handleAspect);
+  }, []);
+
   const isFullWidthSyllabus = activeView === 'syllabus';
   const containerClass = isFullWidthSyllabus
-    ? 'w-full px-4 sm:px-7 lg:px-9'
-    : 'w-full max-w-7xl mx-auto px-4 sm:px-6';
+    ? 'w-full px-4 sm:px-7 lg:px-9 2xl:px-12'
+    : 'manual-content-container px-4 sm:px-6 2xl:px-8';
 
   // 7-Division Fore-Edge Tab Rail with proportional tab heights scaled to module lecture hours
   // M1: 6h (h-20 = 80px), M2: 10h (h-32 = 128px), M3: 10h (h-32 = 128px), M4: 10h (h-32 = 128px), M5: 9h (h-28 = 112px), LABS: h-20, MOCK: h-20
@@ -473,14 +492,14 @@ export default function App() {
         Skip to main content
       </a>
 
-      {/* Centered Archival Reference Manual Shell Assembly (max-w-[1600px]) */}
-      <div className="w-full max-w-[1600px] flex min-w-0 min-h-screen xl:min-h-0">
+      {/* Centered Archival Reference Manual Shell Assembly (Responsive 16:9 / 16:10 / 2560x1600) */}
+      <div className="manual-shell-assembly flex min-w-0 min-h-screen xl:min-h-0">
         {/* Open Manual Section Board */}
         <div className="flex-1 flex bg-[#EAE4D7] dark:bg-[#171613] border border-[#1C1B18] dark:border-[#312E29] rounded-none xl:rounded-l-[6px] min-w-0 transition-colors duration-200">
           {/* Left Punched Ring-Binder Spine Margin (3 Circular Punches + Vertical Rotated Folio Stamp) */}
           <aside
             aria-hidden="true"
-            className="hidden xl:flex flex-col items-center justify-between py-12 w-11 border-r border-[#C5BEB0] dark:border-[#312E29] bg-[#E5DEC9]/60 dark:bg-[#1C1A16] shrink-0 select-none transition-colors duration-200"
+            className="binder-spine-margin hidden xl:flex flex-col items-center justify-between py-12 w-11 border-r border-[#C5BEB0] dark:border-[#312E29] bg-[#E5DEC9]/60 dark:bg-[#1C1A16] shrink-0 select-none transition-colors duration-200"
           >
             <div className="binder-hole" />
             <div className="binder-hole" />
@@ -798,7 +817,7 @@ export default function App() {
         {/* Right Stepped Fore-Edge Division Tab Rail (Proportional Heights Scaled to Module Lecture Hours) */}
         <aside
           aria-label="Manual division tab rail"
-          className="hidden xl:flex flex-col w-9 pt-14 shrink-0 select-none no-print"
+          className="fore-edge-tab-rail hidden xl:flex flex-col w-9 pt-14 shrink-0 select-none no-print"
         >
           {foreEdgeTabs.map((tab) => {
             const bg = darkMode ? tab.darkHex : tab.hex;

@@ -612,3 +612,174 @@ html.dark .diagram-canvas-plate {
     page-break-inside: avoid;
   }
 }
+
+/* ============================================================================
+   Automatic Aspect Ratio & Resolution Optimization
+   Zero user input required: detects 16:10, 16:9, and 2560×1600 automatically.
+   ============================================================================ */
+
+/* Base container sizing defaults */
+.manual-shell-assembly {
+  width: 100%;
+  max-width: 1600px;
+  transition: max-width 0.25s ease-out;
+}
+
+.manual-content-container {
+  width: 100%;
+  max-width: 80rem; /* 1280px */
+  margin-left: auto;
+  margin-right: auto;
+  transition: max-width 0.25s ease-out;
+}
+
+/* ----------------------------------------------------------------------------
+   16:10 Aspect Ratio Support (e.g. 2560x1600, 1920x1200, 2880x1800)
+   16:10 provides 11.1% more vertical space than 16:9 at identical widths.
+   ---------------------------------------------------------------------------- */
+@media (aspect-ratio: 16/10),
+       (min-aspect-ratio: 15/10) and (max-aspect-ratio: 17/10) {
+  .manual-shell-assembly {
+    max-width: min(97vw, 2180px);
+  }
+
+  .manual-content-container {
+    max-width: min(94vw, 1920px);
+  }
+
+  .lab-stage-canvas {
+    min-height: 580px;
+  }
+
+  .prose-manual {
+    max-width: 70ch;
+    font-size: 1.06rem;
+    line-height: 1.68;
+  }
+}
+
+html[data-aspect-ratio="16:10"] .manual-shell-assembly {
+  max-width: min(97vw, 2180px);
+}
+
+html[data-aspect-ratio="16:10"] .manual-content-container {
+  max-width: min(94vw, 1920px);
+}
+
+html[data-aspect-ratio="16:10"] .lab-stage-canvas {
+  min-height: 580px;
+}
+
+/* ----------------------------------------------------------------------------
+   16:9 Aspect Ratio Support (e.g. 1920x1080, 2560x1440, 3840x2160)
+   Generous horizontal span with tighter vertical budget.
+   ---------------------------------------------------------------------------- */
+@media (aspect-ratio: 16/9),
+       (min-aspect-ratio: 17/10) and (max-aspect-ratio: 19/10) {
+  .manual-shell-assembly {
+    max-width: min(96vw, 1980px);
+  }
+
+  .manual-content-container {
+    max-width: min(93vw, 1780px);
+  }
+
+  .lab-stage-canvas {
+    min-height: 520px;
+  }
+}
+
+html[data-aspect-ratio="16:9"] .manual-shell-assembly {
+  max-width: min(96vw, 1980px);
+}
+
+html[data-aspect-ratio="16:9"] .manual-content-container {
+  max-width: min(93vw, 1780px);
+}
+
+html[data-aspect-ratio="16:9"] .lab-stage-canvas {
+  min-height: 520px;
+}
+
+/* ----------------------------------------------------------------------------
+   Dedicated 2560×1600 (WQXGA 16:10) Display Optimization
+   Common on Lenovo Legion, MacBook Pro 16", Asus Zephyrus, Dell XPS.
+   ---------------------------------------------------------------------------- */
+@media (min-width: 2000px) and (min-height: 1200px),
+       (min-width: 2400px) {
+  .manual-shell-assembly {
+    max-width: 2460px !important;
+  }
+
+  .manual-content-container {
+    max-width: 2160px !important;
+  }
+
+  .lab-stage-canvas {
+    min-height: 680px !important;
+  }
+
+  aside.binder-spine-margin {
+    width: 3.5rem !important; /* 56px instead of 44px */
+  }
+
+  aside.fore-edge-tab-rail {
+    width: 3.25rem !important; /* 52px */
+  }
+
+  .wqxga-matrix-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .wqxga-frame-matrix-scroll {
+    overflow-x: visible !important;
+  }
+
+  .prose-manual {
+    max-width: 74ch !important;
+    font-size: 1.1rem !important;
+    line-height: 1.72 !important;
+  }
+}
+
+html[data-is-2560x1600="true"] .manual-shell-assembly,
+html[data-resolution-tier="wqxga"] .manual-shell-assembly {
+  max-width: 2460px !important;
+}
+
+html[data-is-2560x1600="true"] .manual-content-container,
+html[data-resolution-tier="wqxga"] .manual-content-container {
+  max-width: 2160px !important;
+}
+
+html[data-is-2560x1600="true"] .lab-stage-canvas,
+html[data-resolution-tier="wqxga"] .lab-stage-canvas {
+  min-height: 680px !important;
+}
+
+html[data-is-2560x1600="true"] aside.binder-spine-margin,
+html[data-resolution-tier="wqxga"] aside.binder-spine-margin {
+  width: 3.5rem !important;
+}
+
+html[data-is-2560x1600="true"] aside.fore-edge-tab-rail,
+html[data-resolution-tier="wqxga"] aside.fore-edge-tab-rail {
+  width: 3.25rem !important;
+}
+
+html[data-is-2560x1600="true"] .wqxga-matrix-grid,
+html[data-resolution-tier="wqxga"] .wqxga-matrix-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+html[data-is-2560x1600="true"] .wqxga-frame-matrix-scroll,
+html[data-resolution-tier="wqxga"] .wqxga-frame-matrix-scroll {
+  overflow-x: visible !important;
+}
+
+html[data-is-2560x1600="true"] .prose-manual,
+html[data-resolution-tier="wqxga"] .prose-manual {
+  max-width: 74ch !important;
+  font-size: 1.1rem !important;
+  line-height: 1.72 !important;
+}

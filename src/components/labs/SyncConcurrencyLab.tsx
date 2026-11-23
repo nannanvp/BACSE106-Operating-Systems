@@ -317,7 +317,7 @@ export const SyncConcurrencyLab: React.FC = () => {
         {/* ==================================================================== */}
         {/* LEFT 7 COLUMNS: Interactive Visual Stages                           */}
         {/* ==================================================================== */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 space-y-4 lab-stage-canvas">
           {/* 1. Bounded Buffer Stage */}
           {scenario === 'bounded-buffer' && (
             <div className="bg-[var(--bg-paper)] border border-[var(--rule-strong)] rounded-[2px] p-4.5 space-y-4">

@@ -256,7 +256,7 @@ export const CpuSchedulerLab: React.FC = () => {
         {/* ========================================================================= */}
         {/* LEFT 7 COLUMNS: Interactive Gantt Chart, CS Blocks, Metrics, Timeline   */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-7 space-y-5">
+        <div className="lg:col-span-7 space-y-5 lab-stage-canvas">
           {/* 5-Metric Quick Readout Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 font-mono tabular-nums">
             <div className="bg-[var(--bg-paper)] border border-[var(--rule-hairline)] rounded-[2px] p-3">

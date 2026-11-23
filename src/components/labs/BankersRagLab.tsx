@@ -353,9 +353,9 @@ export const BankersRagLab: React.FC = () => {
           {/* ------------------------------------------------------------------
               LEFT 7 COLUMNS: Live Vectors, Dynamic Matrix, Safety Trace Animation
               ------------------------------------------------------------------ */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="lg:col-span-7 space-y-4 lab-stage-canvas">
             {/* System Vectors KPI Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs tabular-nums">
+            <div className="grid grid-cols-2 sm:grid-cols-4 wqxga-matrix-grid gap-2.5 font-mono text-xs tabular-nums">
               <div className="p-3 bg-[var(--bg-paper)] border border-[var(--rule-hairline)] rounded-[2px]">
                 <div className="text-[11px] text-[var(--ink-muted)] uppercase tracking-wider">
                   Total Vector (E)
