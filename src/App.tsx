@@ -183,7 +183,7 @@ export default function App() {
             : activeView === 'standing'
               ? 'standing'
               : activeModuleId;
-    const entry = DIVISION_WHEEL.find((d) => d.id === wheelKey) ?? DIVISION_WHEEL[0];
+    const entry = DIVISION_WHEEL[wheelKey] ?? DIVISION_WHEEL.standing;
     const accentHex = darkMode ? entry.darkHex : entry.hex;
     const baseSheetHex = darkMode ? '#1d1b18' : '#f4efe4';
     const inkHex = darkMode ? '#ebe7df' : '#1c1b18';
@@ -552,7 +552,7 @@ export default function App() {
           aria-label="Binder division fore-edge tabs"
           className="hidden xl:flex flex-col gap-1.5 pt-4 w-[36px] shrink-0 no-print"
         >
-          {DIVISION_WHEEL.filter((d) => d.id !== 'standing').map((tab) => {
+          {Object.values(DIVISION_WHEEL).filter((d) => d.id !== 'standing').map((tab) => {
             const isModule = ['m1', 'm2', 'm3', 'm4', 'm5'].includes(tab.id);
             const isActive =
               (isModule && activeView === 'syllabus' && activeModuleId === tab.id) ||

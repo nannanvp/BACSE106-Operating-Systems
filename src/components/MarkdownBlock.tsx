@@ -1,7 +1,8 @@
 import React from 'react';
 
 interface MarkdownBlockProps {
-  text: string;
+  text?: string;
+  content?: string;
   highlightQuery?: string;
   className?: string;
 }
@@ -56,10 +57,12 @@ function renderInline(line: string, highlightQuery?: string): React.ReactNode[] 
 
 export const MarkdownBlock: React.FC<MarkdownBlockProps> = ({
   text,
+  content,
   highlightQuery,
   className = '',
 }) => {
-  const blocks = text.split(/\n\n+/);
+  const rawText = content ?? text ?? '';
+  const blocks = rawText.split(/\n\n+/);
 
   return (
     <div className={`space-y-2.5 ${className}`}>
