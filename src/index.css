@@ -1,0 +1,218 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   BACSE106 Operating Systems — Technical Reference Manual Design Tokens
+   Aesthetic: rw-manual-acetate-tab-board (Late-1980s Boxed Reference Binder)
+   ============================================================================ */
+:root {
+  --font-display: 'Archivo', system-ui, -apple-system, sans-serif;
+  --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Light Physical Stock Palette */
+  --bg-desk: #26231e;
+  --bg-board: #eae4d7;
+  --bg-sheet: #f4efe4;
+  --bg-paper: #faf7f0;
+  --bg-recessed: #e2dbcc;
+
+  --ink-primary: #1c1b18;
+  --ink-secondary: #434038;
+  --ink-muted: #6e695d;
+  --rule-hairline: #c5beb0;
+  --rule-strong: #9c9484;
+
+  /* Acetate Division Colors */
+  --div-m1: #e5b82e;
+  --div-m2: #e06d2b;
+  --div-m3: #4f8a3d;
+  --div-m4: #147e7b;
+  --div-m5: #22559c;
+  --div-labs: #8b3a62;
+  --div-mock: #3b4d7a;
+  --div-standing: #2e6f5e;
+  --div-danger: #b83227;
+
+  /* Runtime contrast-solved acetate alpha (updated by solveLeafAlpha) */
+  --leaf-tint-alpha: 0.14;
+  --active-accent: #2e6f5e;
+}
+
+.dark {
+  /* OKLCH Warm-Obsidian Dark Ladder (Hue 72 deg — zero CSS invert hacks) */
+  --bg-desk: oklch(0.13 0.008 72);
+  --bg-board: oklch(0.175 0.009 72);
+  --bg-sheet: oklch(0.205 0.010 72);
+  --bg-paper: oklch(0.24 0.011 72);
+  --bg-recessed: oklch(0.16 0.008 72);
+
+  --ink-primary: oklch(0.935 0.012 78);
+  --ink-secondary: oklch(0.79 0.012 76);
+  --ink-muted: oklch(0.64 0.011 74);
+  --rule-hairline: oklch(0.32 0.012 72);
+  --rule-strong: oklch(0.44 0.014 72);
+
+  /* Calibrated Acetate Luminance for Dark Stock */
+  --div-m1: #f0c94f;
+  --div-m2: #ef8347;
+  --div-m3: #6cb057;
+  --div-m4: #2ca5a1;
+  --div-m5: #4f85d1;
+  --div-labs: #c46493;
+  --div-mock: #6e85bd;
+  --div-standing: #4ca38c;
+  --div-danger: #e2584c;
+
+  --leaf-tint-alpha: 0.2;
+}
+
+@layer base {
+  html {
+    background-color: var(--bg-desk);
+    color: var(--ink-primary);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg-desk);
+    color: var(--ink-primary);
+    overflow-x: clip;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Editorial Reference Prose */
+.prose-manual {
+  font-family: var(--font-serif);
+  font-size: 1.09rem;
+  line-height: 1.68;
+  color: var(--ink-primary);
+}
+
+.prose-manual strong {
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.prose-manual code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background-color: var(--bg-recessed);
+  padding: 0.1rem 0.32rem;
+  border-radius: 2px;
+  border: 1px solid var(--rule-hairline);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Physical Binder Mechanics */
+.binder-spine {
+  background-color: var(--bg-board);
+  border-right: 1px solid var(--rule-hairline);
+  background-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.0) 24%,
+    rgba(0, 0, 0, 0.0) 80%,
+    rgba(0, 0, 0, 0.09) 100%
+  );
+}
+
+.binder-hole {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background-color: var(--bg-desk);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--rule-strong);
+}
+
+.step-hinge {
+  position: relative;
+  border-top: 2px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-hairline);
+}
+
+.fore-edge-tab {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+
+/* Dark-Mode-Safe Vector SVG Plate */
+.diagram-canvas-plate {
+  background-color: var(--bg-paper);
+  border: 1px solid var(--rule-hairline);
+  border-radius: 2px;
+  color: var(--ink-primary);
+}
+
+.diagram-canvas-plate svg text {
+  font-family: var(--font-mono);
+}
+
+/* Highlight mark for syllabus deep search */
+mark.manual-mark {
+  background-color: color-mix(in srgb, var(--div-m1) 42%, transparent);
+  color: var(--ink-primary);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Compositor-only Mastery Confetti */
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx, 0px), var(--ty, 140px), 0) rotate(var(--rot, 240deg));
+  }
+}
+
+.confetti-piece {
+  position: fixed;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: confetti-fall var(--dur, 900ms) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print Layout */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
