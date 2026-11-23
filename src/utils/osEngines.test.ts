@@ -1,11 +1,17 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runCpuSchedule, CPU_SCHEDULER_PRESETS } from './cpuSchedulerEngine';
+import {
+  runCpuSchedule,
+  CPU_SCHEDULER_PRESETS,
+  getTimelineState,
+  formatGanttSegmentLabel,
+} from './cpuSchedulerEngine';
 import {
   runBankersSafety,
   evaluateResourceRequest,
   analyzeSingleInstanceRag,
+  validateBankersInput,
   BANKERS_PRESETS,
   RAG_PRESETS,
 } from './bankersEngine';
@@ -20,6 +26,7 @@ import {
   stepDiningPhilosophers,
   createReadersWritersState,
   stepReadersWriters,
+  SYNC_SOLUTIONS,
 } from './syncLabEngine';
 import {
   runPageReplacement,
@@ -27,11 +34,19 @@ import {
   runContiguousPlacement,
   computePagingTlb,
   translateSegmentAddress,
+  evaluateBeladyAnomaly,
   PAGE_REPLACEMENT_PRESETS,
   PLACEMENT_PRESET_C1_2_2_Q8,
   SEGMENTATION_PRESET_C1_1_2_Q5,
 } from './memoryPagingEngine';
-import { runDiskSchedule, evaluateRaidLevel, DISK_PRESETS } from './diskRaidEngine';
+import {
+  runDiskSchedule,
+  evaluateRaidLevel,
+  DISK_PRESETS,
+  calculateRotationalLatency,
+  compareDiskAlgorithms,
+  generateRaidStripes,
+} from './diskRaidEngine';
 
 describe('CPU Scheduling Engine (Real VIT FAT Presets)', () => {
   it('solves C1 Set 2-2 Q5 Preemptive Priority with 1 ms CS overhead consistently', () => {
@@ -90,6 +105,30 @@ describe('CPU Scheduling Engine (Real VIT FAT Presets)', () => {
     // Known Silberschatz answer: Avg WT = (9 + 0 + 15 + 2) / 4 = 6.5 ms
     assert.equal(res.avgWaiting, 6.5);
   });
+
+  it('tracks timeline cursor state and formats explicit context switch labels', () => {
+    const preset = CPU_SCHEDULER_PRESETS.find((p) => p.id === 'c1-2-2-q5')!;
+    const res = runCpuSchedule(preset.processes, preset.algorithm, preset.quantum, preset.csOverhead);
+    const csSeg = res.gantt.find((s) => s.kind === 'cs');
+    assert.ok(csSeg, 'Expected CS segment in C1 Set 2-2 Q5');
+    assert.equal(formatGanttSegmentLabel(csSeg!), `CS[${csSeg!.start}-${csSeg!.end}]`);
+
+    // Test timeline state at start (t=0)
+    const t0 = getTimelineState(res, 0, preset.processes);
+    assert.equal(t0.time, 0);
+    assert.equal(t0.runningProcessId, 'P1');
+    assert.equal(t0.cpuState, 'PROCESS');
+
+    // Test timeline state during CS
+    const tCs = getTimelineState(res, csSeg!.start, preset.processes);
+    assert.equal(tCs.cpuState, 'CS');
+    assert.equal(tCs.csBlockLabel, `CS[${csSeg!.start}-${csSeg!.end}]`);
+
+    // Test timeline state at completion
+    const tEnd = getTimelineState(res, res.totalTime, preset.processes);
+    assert.equal(tEnd.cpuState, 'COMPLETED');
+    assert.ok(tEnd.processStatuses.every((p) => p.status === 'COMPLETED'));
+  });
 });
 
 describe("Banker's Algorithm & RAG Engine (Real VIT FAT Presets)", () => {
@@ -121,6 +160,39 @@ describe("Banker's Algorithm & RAG Engine (Real VIT FAT Presets)", () => {
     assert.equal(res.hasCycle, true);
     assert.deepEqual(res.deadlockedProcesses, ['P1', 'P2', 'P3']);
     assert.deepEqual(res.waitingProcesses, ['P4']);
+  });
+
+  it('validates Banker input matrix and detects allocation > max and alloc > total', () => {
+    const valid = validateBankersInput(BANKERS_PRESETS[0].input);
+    assert.equal(valid.isValid, true);
+    assert.equal(valid.errors.length, 0);
+
+    const invalid = validateBankersInput({
+      resourceNames: ['A', 'B'],
+      totalResources: [2, 2],
+      processIds: ['P0'],
+      allocation: [[3, 1]],
+      max: [[1, 2]],
+    });
+    assert.equal(invalid.isValid, false);
+    assert.ok(invalid.errors.length >= 2);
+  });
+
+  it('evaluates resource requests step-by-step with pass/wait/unsafe status', () => {
+    const preset = BANKERS_PRESETS.find((p) => p.id === 'c1-2-2-q7')!;
+    // Q7(c): Request2 = (0, 0, 1, 0) -> step 1 pass, step 2 pass, step 3 fails (unsafe)
+    const req = evaluateResourceRequest(preset.input, 2, [0, 0, 1, 0]);
+    assert.equal(req.step1Pass, true);
+    assert.equal(req.step2Pass, true);
+    assert.equal(req.step3Pass, false);
+    assert.equal(req.granted, false);
+
+    // Request exceeding need: Request2 = (3, 0, 0, 0) while Need2 = (1, 1, 2, 1)
+    const reqExcess = evaluateResourceRequest(preset.input, 2, [3, 0, 0, 0]);
+    assert.equal(reqExcess.step1Pass, false);
+    assert.equal(reqExcess.step2Pass, false);
+    assert.equal(reqExcess.step3Pass, false);
+    assert.equal(reqExcess.granted, false);
   });
 });
 
@@ -175,6 +247,45 @@ describe('Synchronization Lab Engine', () => {
     assert.equal(rw.activeWriter, null);
     assert.equal(rw.waitingWriters, 1);
   });
+
+  it('validates circular buffer slot pointers, race condition simulations, and SYNC_SOLUTIONS', () => {
+    // 1. Circular buffer slots in Bounded Buffer
+    let bb = createBoundedBufferState(3);
+    assert.equal(bb.inPointer, 0);
+    assert.equal(bb.outPointer, 0);
+    assert.deepEqual(bb.slots, [null, null, null]);
+
+    bb = stepBoundedBuffer(bb, 'produce');
+    assert.equal(bb.inPointer, 1);
+    assert.equal(bb.slots[0], 'ORD#1');
+
+    bb = stepBoundedBuffer(bb, 'consume');
+    assert.equal(bb.outPointer, 1);
+    assert.equal(bb.slots[0], null);
+
+    // Race condition on Bounded Buffer
+    bb = stepBoundedBuffer(bb, 'race-lost-update');
+    assert.equal(bb.raceCorrupted, true);
+
+    // 2. Race condition on Peterson's algorithm
+    let pet = createPetersonState(10, 2);
+    pet = stepPeterson(pet, 'race-both-enter');
+    assert.equal(pet.raceCorrupted, true);
+    assert.deepEqual(pet.inCs, [true, true]);
+    assert.equal(pet.sharedSeats, 6);
+
+    // 3. Race condition on Sleeping Barber (lost wakeup)
+    let barber = createSleepingBarberState(3);
+    barber = stepSleepingBarber(barber, 'race-lost-wakeup');
+    assert.equal(barber.lostWakeup, true);
+    assert.equal(barber.barberStatus, 'sleeping');
+
+    // 4. SYNC_SOLUTIONS metadata integrity
+    assert.ok(SYNC_SOLUTIONS['bounded-buffer'].proofs.mutualExclusion.length > 10);
+    assert.ok(SYNC_SOLUTIONS['peterson'].proofs.progress.length > 10);
+    assert.ok(SYNC_SOLUTIONS['sleeping-barber'].proofs.boundedWaiting.length > 10);
+    assert.ok(SYNC_SOLUTIONS['dining-philosophers'].codeSnippet.includes('ASYMMETRIC'));
+  });
 });
 
 describe('Memory, Paging, Placement & Segmentation Engine (Real VIT FAT Presets)', () => {
@@ -184,6 +295,19 @@ describe('Memory, Paging, Placement & Segmentation Engine (Real VIT FAT Presets)
     const f4 = runPageReplacement(preset.referenceString, 4, 'FIFO');
     assert.equal(f3.faults, 9);
     assert.equal(f4.faults, 10);
+  });
+
+  it('evaluates Second-Chance (Clock) replacement and Belady anomaly detector helper', () => {
+    const belady = evaluateBeladyAnomaly();
+    assert.equal(belady.isAnomaly, true);
+    assert.equal(belady.f3.faults, 9);
+    assert.equal(belady.f4.faults, 10);
+    assert.equal(belady.faultDiff, 1);
+
+    const clockRes = runPageReplacement([1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5], 3, 'CLOCK');
+    assert.equal(clockRes.faults, 9);
+    assert.equal(clockRes.hits, 3);
+    assert.ok(clockRes.steps.every((s) => s.refBits !== undefined));
   });
 
   it('computes C1 Set 2-2 Q6 and C2 Q7 page replacement comparisons with OPT <= LRU', () => {
@@ -281,5 +405,34 @@ describe('Disk Scheduling & RAID Engine (Real VIT FAT Presets)', () => {
     assert.equal(r0.maxDiskFailures, 0);
     assert.equal(r6.usableCapacityTB, 8);
     assert.equal(r6.maxDiskFailures, 2);
+
+    const r1 = evaluateRaidLevel('RAID1', 4, 2);
+    const r5 = evaluateRaidLevel('RAID5', 5, 2);
+    const r10 = evaluateRaidLevel('RAID10', 4, 2);
+    assert.equal(r1.usableCapacityTB, 4);
+    assert.equal(r1.storageEfficiencyPercent, 50);
+    assert.equal(r5.usableCapacityTB, 8);
+    assert.equal(r5.maxDiskFailures, 1);
+    assert.equal(r10.usableCapacityTB, 4);
+
+    const stripes6 = generateRaidStripes('RAID6', 6);
+    assert.equal(stripes6.length, 6);
+    assert.equal(stripes6[0].blocks.length, 4);
+  });
+
+  it('calculates rotational latency and compares all disk scheduling algorithms', () => {
+    const rot6k = calculateRotationalLatency(6000);
+    assert.equal(rot6k.revolutionTimeMs, 10);
+    assert.equal(rot6k.avgLatencyMs, 5);
+
+    const rot72k = calculateRotationalLatency(7200);
+    assert.equal(rot72k.avgLatencyMs, 4.17);
+
+    const preset = DISK_PRESETS.find((p) => p.id === 'c2-q9')!;
+    const comparisons = compareDiskAlgorithms(preset.input);
+    assert.equal(comparisons.length, 6);
+    assert.equal(comparisons[0].rank, 1);
+    assert.equal(comparisons[0].algorithm, 'LOOK');
+    assert.equal(comparisons[0].totalHeadMovement, 594);
   });
 });

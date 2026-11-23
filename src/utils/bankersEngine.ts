@@ -36,6 +36,9 @@ export interface ResourceRequestResult {
   granted: boolean;
   reason: string;
   postRequestSafety?: BankersSafetyResult;
+  step1Pass?: boolean;
+  step2Pass?: boolean;
+  step3Pass?: boolean;
 }
 
 export interface RagEdge {
@@ -146,6 +149,33 @@ export const BANKERS_PRESETS: BankersPreset[] = [
       processIndex: 1,
       request: [1, 0, 2],
       label: 'Silberschatz Example: Request1 = (1, 0, 2)',
+    },
+  },
+  {
+    id: 'deadlock-unsafe-demo',
+    label: 'Deadlock / Unsafe State Demo — 4 Processes, 3 Resources',
+    source: 'Silberschatz Deadlock Avoidance Boundary Condition',
+    input: {
+      resourceNames: ['A', 'B', 'C'],
+      totalResources: [6, 5, 5],
+      processIds: ['P0', 'P1', 'P2', 'P3'],
+      allocation: [
+        [2, 1, 1],
+        [1, 2, 1],
+        [2, 1, 2],
+        [1, 1, 1],
+      ],
+      max: [
+        [4, 3, 3],
+        [3, 4, 2],
+        [4, 2, 4],
+        [2, 3, 3],
+      ],
+    },
+    sampleRequest: {
+      processIndex: 0,
+      request: [1, 0, 0],
+      label: 'Request0 = (1, 0, 0)',
     },
   },
 ];
@@ -279,6 +309,50 @@ export function runBankersSafety(input: BankersInput): BankersSafetyResult {
   };
 }
 
+export interface BankersValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export function validateBankersInput(input: BankersInput): BankersValidation {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const m = input.resourceNames.length;
+  const n = input.processIds.length;
+
+  if (m === 0) errors.push('At least one resource must be defined.');
+  if (n === 0) errors.push('At least one process must be defined.');
+
+  const totalAllocated = Array.from({ length: m }, (_, j) =>
+    input.allocation.reduce((sum, row) => sum + (row[j] ?? 0), 0)
+  );
+
+  totalAllocated.forEach((alloc, j) => {
+    const tot = input.totalResources[j] ?? 0;
+    const rName = input.resourceNames[j] ?? `R${j}`;
+    if (alloc > tot) {
+      errors.push(`Resource ${rName}: Total allocated (${alloc}) exceeds total system instances (${tot}). Available would be negative (${tot - alloc}).`);
+    }
+  });
+
+  input.processIds.forEach((pid, i) => {
+    input.resourceNames.forEach((rName, j) => {
+      const a = input.allocation[i]?.[j] ?? 0;
+      const mx = input.max[i]?.[j] ?? 0;
+      if (a > mx) {
+        errors.push(`Process ${pid}, Resource ${rName}: Allocation (${a}) exceeds declared Max claim (${mx}).`);
+      }
+    });
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
 export function evaluateResourceRequest(
   input: BankersInput,
   processIndex: number,
@@ -298,6 +372,9 @@ export function evaluateResourceRequest(
       exceedsAvailable: false,
       granted: false,
       reason: `Error: Request (${request.join(', ')}) exceeds Need[${processId}] (${procNeed.join(', ')}).`,
+      step1Pass: false,
+      step2Pass: false,
+      step3Pass: false,
     };
   }
 
@@ -311,6 +388,9 @@ export function evaluateResourceRequest(
       exceedsAvailable: true,
       granted: false,
       reason: `Must wait: Request (${request.join(', ')}) exceeds Available (${base.available.join(', ')}).`,
+      step1Pass: true,
+      step2Pass: false,
+      step3Pass: false,
     };
   }
 
@@ -333,6 +413,9 @@ export function evaluateResourceRequest(
       granted: true,
       reason: `GRANTED safely. New Available = (${postSafety.available.join(', ')}); safe sequence: <${postSafety.safeSequence.join(', ')}>.`,
       postRequestSafety: postSafety,
+      step1Pass: true,
+      step2Pass: true,
+      step3Pass: true,
     };
   }
 
@@ -345,6 +428,9 @@ export function evaluateResourceRequest(
     granted: false,
     reason: `DENIED (unsafe state). Tentatively granting leaves Available = (${postSafety.available.join(', ')}) with unfinished processes: ${postSafety.unfinishedProcesses.join(', ')}.`,
     postRequestSafety: postSafety,
+    step1Pass: true,
+    step2Pass: true,
+    step3Pass: false,
   };
 }
 

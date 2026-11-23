@@ -4,7 +4,16 @@ import assert from 'node:assert/strict';
 import { solveLeafAlpha } from './contrastSolver';
 import { computeReadiness } from './readinessEngine';
 import { reviewCard, sortCardsByDueOrder, computeSrsForecast } from './srsEngine';
-import { evaluateStandingModule, getStandingBand, buildStandingRadarData } from './standingEngine';
+import {
+  evaluateStandingModule,
+  getStandingBand,
+  buildStandingRadarData,
+  computeRadarPoint,
+  computeRadarPolygonPath,
+  evaluate95Readiness,
+  analyzeModuleWeakSpots,
+  getModuleDrillPreset,
+} from './standingEngine';
 import {
   recordWeakTopicMiss,
   markWeakTopicReviewed,
@@ -110,6 +119,47 @@ describe('Core Application Engines', () => {
     const radar = buildStandingRadarData([{ id: 'm1', code: 'M1', shortTitle: 'OS' }], { m1: res });
     assert.equal(radar[0].foundationPct, 100);
     assert.equal(radar[0].analysisPct, 60);
+
+    // Geometry helpers
+    const pt0 = computeRadarPoint(0, 5, 1, 100, 200, 200);
+    assert.equal(pt0.x, 200);
+    assert.equal(pt0.y, 100);
+    const path = computeRadarPolygonPath([100, 50, 50, 50, 50], 100, 200, 200);
+    assert.ok(path.startsWith('M200,100'));
+    assert.ok(path.endsWith('Z'));
+
+    // 95+ Readiness Assessment
+    const unassessed = evaluate95Readiness({});
+    assert.equal(unassessed.band, 'BAND_D');
+    assert.equal(unassessed.assessedCount, 0);
+
+    const standing5 = {
+      m1: { ...res, score: 29 },
+      m2: { ...res, score: 29 },
+      m3: { ...res, score: 28 },
+      m4: { ...res, score: 29 },
+      m5: { ...res, score: 29 },
+    };
+    const ready95 = evaluate95Readiness(standing5);
+    assert.equal(ready95.band, '95_LOCK');
+    assert.equal(ready95.currentScore, 144);
+    assert.equal(ready95.gapTo95, 0);
+
+    // Module Weak Spot Analysis
+    const spots = analyzeModuleWeakSpots(
+      {
+        m1: { ...res, score: 28, foundation: { correct: 10, total: 10, pct: 100 }, application: { correct: 10, total: 10, pct: 100 }, analysis: { correct: 8, total: 10, pct: 80 } },
+        m2: { ...res, score: 18, foundation: { correct: 8, total: 10, pct: 80 }, application: { correct: 4, total: 10, pct: 40 }, analysis: { correct: 6, total: 10, pct: 60 } },
+      },
+      [
+        { id: 'm1', code: 'M1', title: 'OS Structures', hours: 6 },
+        { id: 'm2', code: 'M2', title: 'Processes & Deadlocks', hours: 10 },
+      ]
+    );
+    assert.equal(spots.weakestModule?.moduleId, 'm2');
+    assert.equal(spots.weakestModule?.lowestTier, 'application');
+    assert.equal(getModuleDrillPreset('m2').view, 'labs');
+    assert.equal(getModuleDrillPreset('m4').view, 'labs');
   });
 
   it('weakTopicsEngine pins topics with >=3 misses and >=2h overdue and marks <1h reviewed', () => {
@@ -209,5 +259,38 @@ describe('Core Application Engines', () => {
       const graded = gradeNumericalAnswer(String(prob.expectedAnswer), prob.expectedAnswer, prob.tolerance);
       assert.equal(graded.correct, true);
     }
+  });
+
+  it('numericalDrillEngine generates all 6 OS archetypes deterministically with tolerance parsing and rubric steps', () => {
+    const requiredArchetypes = [
+      'cpu-avg-wt',
+      'bankers-need',
+      'demand-paging-eat',
+      'working-set-window',
+      'unix-inode-max-file-size',
+      'disk-rotational-latency',
+    ] as const;
+
+    assert.equal(DRILL_ARCHETYPES.length, 6);
+    for (const archId of requiredArchetypes) {
+      assert.ok(DRILL_ARCHETYPES.some((a) => a.id === archId), `Must include archetype ${archId}`);
+      for (const seed of [1, 42, 106, 999]) {
+        const prob = generateDrillProblem(archId, seed);
+        assert.ok(Number.isFinite(prob.expectedAnswer));
+        assert.ok(prob.rubricSteps.length >= 3);
+        assert.ok(prob.givenBlock.length > 0);
+        assert.ok(prob.targetSeconds >= 60);
+
+        const exactGrade = gradeNumericalAnswer(String(prob.expectedAnswer), prob.expectedAnswer, prob.tolerance);
+        assert.equal(exactGrade.correct, true);
+
+        const unitGrade = gradeNumericalAnswer(`${prob.expectedAnswer} ${prob.unit}`, prob.expectedAnswer, prob.tolerance);
+        assert.equal(unitGrade.correct, true);
+      }
+    }
+
+    const badGrade = gradeNumericalAnswer('not-a-number', 42, 0.1);
+    assert.equal(badGrade.validNumber, false);
+    assert.equal(badGrade.correct, false);
   });
 });

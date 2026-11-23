@@ -2,506 +2,1399 @@ import { TopicNote } from './noteTypes';
 
 export const MODULE_4_NOTES: TopicNote[] = [
   {
-    topicId: 'm4-contiguous-allocation',
-    moduleId: 'm4',
-    title: 'MMU Address Binding, Fragmentation & Contiguous Placement (FF, BF, WF, NF)',
-    summary:
-      'The MMU translates logical addresses to physical RAM via relocation/limit registers; contiguous dynamic partitioning trades search speed against external fragmentation across First, Best, Worst, and Next Fit.',
-    sourceDecks: ['Silberschatz 10e Ch 9 (§9.1–9.2)', 'VITC Past Paper: C1 Set 2-2 Q8 (15M)'],
-    keyPoints: [
-      'Address binding times: **Compile-time** (absolute code), **Load-time** (relocatable code), **Execution-time** (requires hardware **MMU** with Relocation + Limit registers).',
-      '**Internal Fragmentation**: wasted bytes *inside* an allocated partition/frame. **External Fragmentation**: enough total free RAM exists, but split into non-contiguous holes too small for the request.',
-      '4 Contiguous Strategies: **First Fit** (fastest, 50%-rule frag), **Next Fit** (resumes from last pointer with wrap-around), **Best Fit** (smallest sufficient hole -> tiny leftover slivers), **Worst Fit** (largest hole -> preserves medium leftovers).',
-      'External fragmentation remedies: **Compaction** (only possible with execution-time relocation; expensive copying) or **Non-Contiguous Paging**.',
+    "topicId": "m4-contiguous-allocation",
+    "moduleId": "m4",
+    "title": "MMU Address Binding, Dynamic Relocation, Fragmentation & Contiguous Placement (FF, BF, WF, NF)",
+    "summary": "The Memory Management Unit (MMU) translates CPU logical addresses to physical RAM via relocation and limit registers; contiguous dynamic partitioning trades search latency against severe external fragmentation across First, Best, Worst, and Next Fit strategies.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 9 (\u00a79.1\u20139.2)",
+      "VITC Past Paper: C1 Set 2-2 Q8 (15M)",
+      "VITC Lecture Deck: Module 4 Memory Management"
     ],
-    sections: [
+    "keyPoints": [
+      "Address binding stages: **Compile-time** (generates absolute code with fixed addresses; recompile required if base changes), **Load-time** (generates relocatable code; loader binds physical base; static once loaded), **Execution-time** (runtime dynamic relocation via hardware **MMU** Relocation and Limit registers; process can move in RAM).",
+      "Hardware MMU Protection: The CPU emits a logical address `L`. The hardware MMU validates `L < Limit Register` (raising an **Addressing Error Trap** if false) and adds the `Relocation (Base) Register` to produce physical address `P = Base + L`.",
+      "**Internal Fragmentation**: Unused memory bytes *inside* an allocated fixed partition or page frame. Occurs when a process request is smaller than the allocated block.",
+      "**External Fragmentation**: Total free memory across the system is sufficient to satisfy a request, but it is split into non-contiguous holes too small to satisfy the request individually.",
+      "**Knuth\u2019s 50% Rule of External Fragmentation**: In dynamic partitioning using First Fit, if `N` memory blocks are allocated, approximately `0.5 * N` additional blocks are lost to fragmentation, meaning roughly **one-third (33%)** of total memory becomes unusable!",
+      "4 Contiguous Strategies: **First Fit** (allocates the first hole that fits; fastest; good storage utilization), **Next Fit** (variant of First Fit that resumes search from the last allocated pointer with circular wrap-around), **Best Fit** (allocates the smallest sufficient hole; leaves tiny unusable slivers), **Worst Fit** (allocates the largest available hole; leaves larger residual holes but requires searching entire list).",
+      "External Fragmentation Remedies: **Compaction** (shuffling live memory blocks to coalesce free holes into a single contiguous block; strictly requires **execution-time dynamic relocation**) and **Non-Contiguous Allocation (Paging / Segmentation)**."
+    ],
+    "sections": [
       {
-        heading: 'MMU Hardware Relocation & Limit Protection',
-        body: 'The CPU emits a logical address `L`. Hardware checks `L < Limit Register` (else raises an Addressing Error trap) and adds `Relocation (Base) Register` to produce physical address `P = Base + L`.',
-        diagramId: 'm4-mmu-relocation',
-      },
-      {
-        heading: 'Verified 15M FAT Masterpiece: C1 Set 2-2 Q8 (7 Blocks, 6 Processes)',
-        body: 'Free blocks `[180, 420, 260, 500, 320, 380, 220]` KB (total = `2280 KB`). Requests: `P1=100, P2=410, P3=390, P4=350, P5=400, P6=240` (sum = `1890 KB`). Remainder stays in place. Verify step-by-step in **Lab 4 (Memory & Paging Lab)**!',
-        table: {
-          headers: ['Strategy', 'Allocated Count', 'Unallocated', 'Total Free KB', 'Largest Free Hole', 'Final Block Remainders (KB)'],
-          rows: [
-            ['First Fit', '5 / 6', 'P5 (400 KB)', '790 KB', '320 KB', '[80, 10, 20, 110, 320, 30, 220]'],
-            ['Best Fit', '5 / 6', 'P5 (400 KB)', '790 KB', '320 KB', '[80, 10, 20, 110, 320, 30, 220]'],
-            ['Next Fit', '5 / 6', 'P5 (400 KB)', '790 KB', '320 KB', '[80, 10, 20, 110, 320, 30, 220] (wraps on P5/P6)'],
-            ['Worst Fit', '5 / 6', 'P5 (400 KB)', '790 KB', '260 KB', '[180, 10, 260, 10, 80, 30, 220]'],
+        "heading": "Address Binding Stages & MMU Hardware Protection Architecture",
+        "body": "Address binding maps a program's symbolic addresses (variable names, function labels) to physical hardware memory addresses. In modern multiprogrammed operating systems, execution-time dynamic binding is mandatory to permit swapping, dynamic library loading, and memory compaction.\n\nHardware relocation uses two dedicated CPU registers: the **Relocation (Base) Register** and the **Limit Register**. Every logical address generated by the CPU is verified in hardware before reaching the memory bus. If a program attempts to access beyond its allocated limit (`Logical Address >= Limit`), an **Addressing Error Trap** halts the process, guaranteeing inter-process memory isolation.",
+        "diagramId": "m4-mmu-relocation",
+        "table": {
+          "headers": [
+            "Binding Stage",
+            "When Addresses Bound",
+            "Code Nature",
+            "Hardware Required",
+            "Compaction Supported?"
           ],
-        },
+          "rows": [
+            [
+              "Compile-time",
+              "During compilation",
+              "Absolute addresses",
+              "None (static)",
+              "No (fixed physical address)"
+            ],
+            [
+              "Load-time",
+              "During program loading",
+              "Relocatable code",
+              "Static loader",
+              "No (cannot move once loaded)"
+            ],
+            [
+              "Execution-time",
+              "During instruction execution",
+              "Logical / Virtual code",
+              "MMU Base + Limit registers",
+              "Yes (update base register)"
+            ]
+          ]
+        }
       },
+      {
+        "heading": "Dynamic Storage Allocation Strategies: First Fit, Best Fit, Worst Fit, Next Fit",
+        "body": "When dynamic variable-partitioning (MVT) is used, physical memory consists of alternating allocated blocks and free holes. When a process of size `S` arrives, the OS searches the free-hole list to allocate memory:",
+        "table": {
+          "headers": [
+            "Strategy",
+            "Search Method",
+            "Search Overhead",
+            "Leftover Hole Nature",
+            "Primary Strength / Weakness"
+          ],
+          "rows": [
+            [
+              "First Fit",
+              "Scans list from the beginning; selects first hole where `Hole >= S`",
+              "Fastest on average (terminates early)",
+              "Produces medium-sized leftovers",
+              "High throughput; tends to cluster small holes at the start of memory"
+            ],
+            [
+              "Next Fit",
+              "Scans list starting from the pointer of the *last allocation*; wraps around",
+              "Fast (avoids re-scanning head)",
+              "Distributes fragments across entire RAM",
+              "Avoids front-clustering, but tends to break up the large hole at the end of memory"
+            ],
+            [
+              "Best Fit",
+              "Searches the ENTIRE list; selects smallest hole where `Hole >= S`",
+              "Slow (must scan all holes unless sorted)",
+              "Produces tiny, unusable slivers",
+              "Minimizes wasted bytes per allocation, but creates severe external fragmentation slivers"
+            ],
+            [
+              "Worst Fit",
+              "Searches the ENTIRE list; selects largest available hole",
+              "Slow (must scan all holes unless max-heap)",
+              "Leaves largest possible leftover hole",
+              "Leftover hole is often large enough for subsequent requests, but performs poorly overall"
+            ]
+          ]
+        }
+      },
+      {
+        "heading": "External Fragmentation Analysis, Knuth\u2019s 50% Rule & Memory Compaction",
+        "body": "External fragmentation is the fundamental flaw of contiguous dynamic partitioning. As processes enter and exit, memory becomes peppered with small holes.\n\n**Knuth's 50% Rule Formulation:**\nLet $N$ be the equilibrium number of allocated blocks and $H$ the number of free holes. In a dynamic system using First Fit where blocks are allocated and deallocated at random, the number of holes tends to be approximately half the number of allocated blocks: $$H \\approx 0.5 \\times N$$\nIf the average hole size is $\\bar{h}$ and the average process size is $\\bar{s}$, the fraction of memory lost to fragmentation is:\n$$\\text{Fraction Lost} = \\frac{H \\cdot \\bar{h}}{N \\cdot \\bar{s} + H \\cdot \\bar{h}} \\approx \\frac{0.5 \\bar{s}}{1.5 \\bar{s}} = \\frac{1}{3} \\approx 33.3\\%$$\nThus, roughly **one-third of physical memory is lost to external fragmentation**!\n\n**Memory Compaction:**\nTo reclaim external fragmentation, the OS can perform compaction by relocating running processes toward one end of memory, coalescing all scattered holes into a single large contiguous hole. However, compaction has massive drawbacks:\n1. It is **only possible with execution-time dynamic binding** (relocatable via MMU base registers).\n2. It requires enormous memory bandwidth: copying gigabytes of RAM stalls CPU execution and degrades real-time responsiveness.\n3. The ultimate architectural solution to external fragmentation is **Non-Contiguous Allocation (Paging)**.",
+        "codeBlock": "// Knuth 50% Rule Simulation Principle\nAllocated blocks: N\nFree holes:       H ~ 0.5 * N\nTotal partitions: N + H ~ 1.5 * N\nWasted Capacity:  H / (N + H) ~ 0.5 / 1.5 = 33.3%"
+      },
+      {
+        "heading": "Verified 15M FAT Masterpiece: C1 Set 2-2 Q8 (7 Blocks, 6 Processes)",
+        "body": "Past FAT Exam Problem: Memory partitions available: `[180, 420, 260, 500, 320, 380, 220]` KB (Total RAM = `2280 KB`).\nProcess requests arrive in order: `P1=100, P2=410, P3=390, P4=350, P5=400, P6=240` KB (Total Process Demand = `1890 KB`). Remainder of allocated block stays in its position.\nTrace all four strategies and analyze external fragmentation:",
+        "table": {
+          "headers": [
+            "Strategy",
+            "Allocated Processes",
+            "Unallocated Process",
+            "Total Free RAM",
+            "Largest Free Hole",
+            "Final Block Remainders (KB)"
+          ],
+          "rows": [
+            [
+              "First Fit",
+              "P1, P2, P3, P4, P6 (5/6)",
+              "P5 (400 KB)",
+              "790 KB",
+              "320 KB",
+              "[80, 10, 20, 110, 320, 30, 220]"
+            ],
+            [
+              "Best Fit",
+              "P1, P2, P3, P4, P6 (5/6)",
+              "P5 (400 KB)",
+              "790 KB",
+              "320 KB",
+              "[80, 10, 20, 110, 320, 30, 220]"
+            ],
+            [
+              "Next Fit",
+              "P1, P2, P3, P4, P6 (5/6)",
+              "P5 (400 KB)",
+              "790 KB",
+              "320 KB",
+              "[80, 10, 20, 110, 320, 30, 220] (wraps on P5 & P6)"
+            ],
+            [
+              "Worst Fit",
+              "P1, P2, P3, P4, P6 (5/6)",
+              "P5 (400 KB)",
+              "790 KB",
+              "260 KB",
+              "[180, 10, 260, 10, 80, 30, 220]"
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'Why External Fragmentation Rejects P5 (400 KB) in C1 2-2 Q8',
-      problem:
-        'After allocating P1, P2, P3, P4 (1250 KB total), 1030 KB remains free before P5 arrives (and 790 KB remains after P6). Why does P5 (400 KB) fail across ALL four strategies?',
-      solution:
-        'Total free RAM (`790 KB` at end, `1030 KB` when P5 arrives) easily exceeds `400 KB`, **yet no single contiguous hole is >= 400 KB** (largest hole is `320 KB` in FF/BF/NF and `260 KB` in WF). This is the textbook definition of **External Fragmentation**.',
+    "workedExample": {
+      "title": "Why External Fragmentation Rejects P5 (400 KB) in C1 Set 2-2 Q8",
+      "problem": "After allocating P1 (100 KB in 180 -> 80), P2 (410 KB in 420 -> 10), P3 (390 KB in 500 -> 110 in FF/BF/NF), and P4 (350 KB in 380 -> 30), total allocated memory is 1250 KB. When P5 (400 KB) arrives, the system has 1030 KB of free memory. Why does P5 fail across ALL four strategies, and how would compaction resolve it?",
+      "solution": "1. **Cause of Failure**: Although total free RAM (1030 KB) is more than 2.5\u00d7 the size of P5 (400 KB), the individual free holes are: Block 0: 80 KB, Block 1: 10 KB, Block 2: 260 KB, Block 3: 110 KB, Block 4: 320 KB, Block 5: 30 KB, Block 6: 220 KB. The largest single hole is only 320 KB (in Block 4). Because contiguous allocation requires an unbroken span of 400 KB, P5 cannot be placed. This is the textbook definition of **External Fragmentation**.\n2. **Compaction Solution**: Under execution-time dynamic relocation, the OS compacts live blocks P1, P2, P3, P4 into lower memory (0 to 1250 KB). All free holes coalesce into a single contiguous hole of 1030 KB (from 1250 to 2280 KB). P5 (400 KB) and P6 (240 KB) can then both be allocated easily, leaving 390 KB free."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Slot C1+TC1 Set 2-2 Q8 (15M)',
-        promptSummary: 'First Fit & Best Fit (4M), Next Fit w/ pointer wrap (4M), Worst Fit (4M), comparison & external fragmentation (3M).',
-        markBreakdown: 'FF+BF traces (4M) + Next Fit wrap-around trace (4M) + Worst Fit trace (4M) + Summary table + External Frag (3M)',
-        solutionSteps: [
-          'Show the array of 7 blocks after EVERY process `P1..P6` so partial credit is guaranteed even if one line slips.',
-          'For Next Fit, explicitly annotate the pointer index after every allocation and note the circular wrap-around when searching for `P5` and `P6`.',
-          'Conclude with exact comparison metrics: `5/6` allocated, `790 KB` total free, `320 KB` vs `260 KB` largest hole -> external fragmentation.',
+        "paperSource": "Slot C1+TC1 Set 2-2 Q8 (15M)",
+        "promptSummary": "First Fit & Best Fit allocation (4M), Next Fit trace with circular pointer wrap (4M), Worst Fit trace (4M), comparative analysis & external fragmentation explanation (3M).",
+        "markBreakdown": "FF+BF block traces (4M) + Next Fit pointer wrap trace (4M) + Worst Fit trace (4M) + Comparison table & external frag explanation (3M)",
+        "solutionSteps": [
+          "State the initial array of 7 blocks clearly: `[180, 420, 260, 500, 320, 380, 220] KB`.",
+          "Show the remaining hole array after EVERY process `P1..P6` allocation so that examiners award full partial credit even if arithmetic slips.",
+          "For Next Fit, annotate the pointer position explicitly after each allocation (e.g., after P4 allocated in Block 5, pointer points to Block 6; to allocate P5, search wraps from Block 6 -> 0 -> 1 -> 2 -> 3 -> 4 -> 5 and fails; then P6 wraps to Block 2 (260 KB) and succeeds).",
+          "Conclude with the summary table: Allocated count (5/6), Unallocated (P5), Total Free RAM (790 KB), Largest Hole (320 KB in FF/BF/NF vs 260 KB in WF), and define External Fragmentation explicitly."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-ca-1",
+        "question": "Which address-binding stage is strictly required to perform runtime memory compaction?",
+        "options": [
+          "Compile-time binding",
+          "Load-time binding",
+          "Execution-time binding (with MMU relocation register)",
+          "Assembler macro binding"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-ca-1',
-        question: 'Which address-binding stage is REQUIRED to perform runtime memory compaction?',
-        options: ['Compile-time binding', 'Load-time binding', 'Execution-time binding (with MMU)', 'Assembler macro binding'],
-        correctIndex: 2,
-        explanation: 'Compaction moves live processes in physical RAM at runtime, which is only possible with execution-time relocation hardware.',
+        "correctIndex": 2,
+        "explanation": "Compaction moves running processes across physical RAM at runtime. This is only possible if addresses are dynamically relocated at execution time via MMU base/relocation registers."
       },
       {
-        id: 'sc-m4-ca-2',
-        question: 'Which contiguous strategy tends to produce the smallest, most unusable leftover memory slivers?',
-        options: ['First Fit', 'Best Fit', 'Worst Fit', 'Paging'],
-        correctIndex: 1,
-        explanation: 'Best Fit chooses the tightest-fitting hole, leaving tiny slivers too small for future requests.',
+        "id": "sc-m4-ca-2",
+        "question": "According to Knuth\u2019s 50% Rule of External Fragmentation, what proportion of memory is typically lost when N blocks are allocated using First Fit?",
+        "options": [
+          "Approximately 10% of total memory",
+          "Approximately one-third (33%) of total memory",
+          "Exactly 50% of total memory",
+          "Zero, because First Fit eliminates fragmentation"
+        ],
+        "correctIndex": 1,
+        "explanation": "Knuth's 50% Rule states that H \u2248 0.5 * N holes exist for N allocated blocks. The fraction of memory lost is H / (N + H) \u2248 0.5 / 1.5 = 1/3 (approximately 33.3%)."
       },
+      {
+        "id": "sc-m4-ca-3",
+        "question": "Which contiguous placement strategy tends to produce tiny, unusable residual memory slivers?",
+        "options": [
+          "First Fit",
+          "Best Fit",
+          "Worst Fit",
+          "Next Fit"
+        ],
+        "correctIndex": 1,
+        "explanation": "Best Fit searches for the hole closest in size to the request, which naturally leaves behind the smallest possible leftovers\u2014tiny slivers too small to satisfy future requests."
+      }
     ],
-    examTip: 'Always check total memory conservation: `Sum(Initial Blocks) == Sum(Allocated Processes) + Sum(Final Free Blocks)` (`2280 = 1490 + 790`)!',
+    "examTip": "Always check total memory conservation: `Sum(Initial Blocks) == Sum(Allocated Processes) + Sum(Final Free Blocks)` (`2280 = 1490 + 790`)! And for Next Fit, always explicitly annotate the pointer position after each allocation and note when it wraps circularly to block 0."
   },
   {
-    topicId: 'm4-paging-tlb',
-    moduleId: 'm4',
-    title: 'Paging, TLB Effective Access Time (EAT), Multi-Level/Hashed/Inverted Tables & Segmentation',
-    summary:
-      'Paging eliminates external fragmentation by mapping fixed-size virtual pages to physical frames accelerated by an associative TLB; Segmentation exposes logical variable-size code/data/stack regions with base-limit protection.',
-    sourceDecks: ['Silberschatz 10e Ch 9 (§9.3–9.6)', 'VITC Past Papers: C2 Q8 & C1 1-2 Q5'],
-    keyPoints: [
-      'Bit splits: `d = log2(PageSize)`, `p = log2(VAS) - d`, `f = log2(RAM) - d`. Offset `d` is **identical** in logical and physical addresses.',
-      '**TLB EAT**: `EAT = α * (T_tlb + T_mem) + (1 - α) * (T_tlb + 2 * T_mem) = T_tlb + (2 - α) * T_mem`.',
-      'Large-VAS Page Table structures: **Hierarchical (Multi-level)** (pages the page table), **Hashed** (common for 64-bit sparse VAS), **Inverted** (1 global entry per physical RAM frame `<pid, p>`).',
-      '**Segmentation**: `<segment, offset>` checks STRICT **`offset < limit`**; if valid `Phys = base + offset`, else **TRAP (Addressing Error)**.',
+    "topicId": "m4-paging-tlb",
+    "moduleId": "m4",
+    "title": "Paging Architecture, TLB Effective Access Time (EAT), Page Table Hierarchies & Segmentation",
+    "summary": "Paging permanently eliminates external fragmentation by translating fixed-size virtual pages to physical frames accelerated by an associative TLB; multi-level, hashed, and inverted page tables scale address translation to large address spaces, while segmentation provides logical programmer-level memory protection with strict base-limit bounds checking.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 9 (\u00a79.3\u20139.6)",
+      "VITC Past Papers: C2 Q8 (10M) & C1 Set 1-2 Q5 (10M)"
     ],
-    sections: [
+    "keyPoints": [
+      "Paging bit splits: Logical address of $m$ bits with page size $2^n$ bytes splits into Page Number $p = m - n$ bits (upper bits) and Offset $d = n$ bits (lower bits). Physical address of $k$ bits splits into Frame Number $f = k - n$ bits and identical Offset $d = n$ bits.",
+      "Internal Fragmentation in Paging: Paging completely eliminates external fragmentation. Internal fragmentation occurs only in the final allocated page of a process, with an expected average waste of **$\\frac{1}{2} \\times \\text{PageSize}$** bytes per process.",
+      "Page Table Entry (PTE) Flags: Frame Number ($f$), Valid-Invalid bit ($v/i$), Protection bits (Read, Write, Execute), Modify/Dirty bit ($M$), Reference bit ($R$), and Cache Inhibit bit.",
+      "Associative TLB & Effective Access Time (EAT): On a TLB hit ($\u0007lpha$), hardware translates address in $T_{\\text{tlb}}$ and accesses RAM once: $T_{\\text{hit}} = T_{\\text{tlb}} + T_{\\text{mem}}$. On a TLB miss ($1 - \\alpha$), CPU must access the page table in RAM first, update TLB, and then access data: $T_{\\text{miss}} = T_{\\text{tlb}} + 2 \\times T_{\\text{mem}}$. $\\text{EAT} = \\alpha(T_{\\text{tlb}} + T_{\\text{mem}}) + (1 - \\alpha)(T_{\\text{tlb}} + 2 \\times T_{\\text{mem}}) = T_{\\text{tlb}} + (2 - \\alpha) T_{\\text{mem}}$.",
+      "Multi-Level (Hierarchical) Page Tables: Paging the page table avoids allocating large contiguous page tables for sparse address spaces. For a $k$-level page table, a TLB miss costs $k$ memory accesses for the page tables + 1 for data: $\\text{Miss Penalty} = T_{\\text{tlb}} + (k + 1) \\times T_{\\text{mem}}$.",
+      "Hashed Page Tables: Used for 64-bit sparse address spaces. Virtual page number $p$ is hashed to a hash table bucket containing a linked list of $\\langle p, f, \\text{next}\\rangle$ tuples. Clustered page tables map each hash entry to multiple contiguous pages.",
+      "Inverted Page Tables: Exactly one entry per physical RAM frame $\\langle\\text{PID}, p\\rangle$. Page table size is proportional to physical memory, not virtual address space size (e.g. 16 GB RAM with 4 KB pages needs only $2^{22}$ entries = 32 MB system-wide), but requires hash anchor tables for fast search and makes shared memory difficult.",
+      "Segmentation Hardware: Logical addresses are 2-tuples $\\langle\\text{Segment Number } s, \\text{Offset } d\\rangle$. Hardware strictly checks **$d < \\text{Limit}[s]$**. If valid, Physical Address $P = \\text{Base}[s] + d$; if $d \\ge \\text{Limit}[s]$, CPU generates an **Addressing Error TRAP (SIGSEGV)**. Segmentation eliminates internal fragmentation but re-introduces external fragmentation."
+    ],
+    "sections": [
       {
-        heading: 'Paging Hardware with Associative TLB',
-        body: 'On a TLB hit, the frame number `f` is retrieved in parallel in `~10 ns` (1 RAM access total). On a TLB miss, the CPU must read the Page Table in RAM first, update the TLB, and then access the actual data word (2 RAM accesses total).',
-        diagramId: 'm4-paging-tlb',
-        table: {
-          headers: ['C2 Q8 Parameter', 'Calculation', 'Exact Answer'],
-          rows: [
-            ['VAS = 64 KB, Page = 1 KB', '64 KB = 2^16, 1 KB = 2^10', 'Logical = 16 bits (`p = 6`, `d = 10`), 64 pages'],
-            ['RAM = 16 KB, Frame = 1 KB', '16 KB = 2^14, 1 KB = 2^10', 'Physical = 14 bits (`f = 4`, `d = 10`), 16 frames'],
-            ['EAT at 80% TLB Hit (TLB=10ns, RAM=100ns)', '0.80(10+100) + 0.20(10+200)', '**130 ns**'],
-            ['EAT at 95% TLB Hit', '0.95(110) + 0.05(210)', '**115 ns** (`15 ns` / `11.54%` faster!)'],
-          ],
-        },
+        "heading": "Paging Hardware Architecture & Binary Address Bit Split Formulations",
+        "body": "Paging divides a process's logical address space into fixed-sized blocks called **Pages**, and physical RAM into identically sized blocks called **Frames** (typically 4 KB = $2^{12}$ bytes).\n\n**Binary Address Derivations:**\n- Virtual Address Space size $= 2^m$ bytes $\\implies$ Logical Address $= m$ bits.\n- Page Size $= 2^n$ bytes $\\implies$ Page Offset $d = n$ bits.\n- Page Number $p = m - n$ bits $\\implies$ Number of virtual pages $= 2^p = 2^{m-n}$.\n- Physical RAM size $= 2^k$ bytes $\\implies$ Physical Address $= k$ bits.\n- Frame Number $f = k - n$ bits $\\implies$ Number of physical frames $= 2^f = 2^{k-n}$.\n- The offset $d$ is **strictly identical** in both logical and physical addresses!\n\n**Page Table Entry (PTE) Architecture:**\nEach PTE maps a virtual page $p$ to frame $f$ and contains critical hardware status bits:\n1. **Frame Number ($f$):** Upper bits of the physical address.\n2. **Valid/Invalid bit ($v/i$):** $v$ means resident in RAM; $i$ means invalid address or paged out to disk.\n3. **Protection bits ($R/W/X$):** Enforces read-only code, readable/writable data, and non-executable stack.\n4. **Reference bit ($R$):** Set by hardware whenever the page is read or written (used by Clock/LRU replacement).\n5. **Modify / Dirty bit ($M$):** Set by hardware whenever the page is written to (avoids disk write on clean eviction).",
+        "diagramId": "m4-paging-tlb",
+        "codeBlock": "// Address Bit Split Examples:\n1. 32-bit VAS, 4 KB Page, 512 MB RAM:\n   - n = log2(4 KB) = 12 bits (Offset d)\n   - p = 32 - 12 = 20 bits (Page number -> 1,048,576 pages)\n   - k = log2(512 MB) = 29 bits (Physical Address)\n   - f = 29 - 12 = 17 bits (Frame number -> 131,072 frames)\n   - Page Table Size = 2^20 * 4 bytes = 4 MB per process!\n\n2. 16-bit VAS, 1 KB Page, 16 KB RAM (VIT C2 Q8):\n   - n = log2(1 KB) = 10 bits (Offset d)\n   - p = 16 - 10 = 6 bits (64 pages)\n   - k = log2(16 KB) = 14 bits (Physical Address)\n   - f = 14 - 10 = 4 bits (16 frames)"
       },
       {
-        heading: 'Segmentation Hardware & C1 Set 1-2 Q5 Translation Table',
-        body: 'Segments reflect programmer views (Code, Data, Heap, Stack). Remember: Segmentation eliminates internal fragmentation but **re-introduces external fragmentation** (solved by Paged Segmentation or Compaction).',
-        diagramId: 'm4-segmentation-hw',
-        table: {
-          headers: ['Logical Address (C1 1-2 Q5)', 'Base', 'Limit', 'Check (`offset < limit`)', 'Physical Address'],
-          rows: [
-            ['(Code, 250)', '1000', '400', '250 < 400 (Valid)', '`1000 + 250 = 1250`'],
-            ['(Data, 350)', '2500', '300', '350 < 300 (FALSE!)', '**TRAP: Addressing Error**'],
-            ['(Heap, 400)', '4000', '500', '400 < 500 (Valid)', '`4000 + 400 = 4400`'],
-            ['(Stack, 150)', '6000', '200', '150 < 200 (Valid)', '`6000 + 150 = 6150`'],
+        "heading": "Associative TLB Hardware & Rigorous Effective Access Time (EAT) Derivations",
+        "body": "Because accessing a page table in RAM doubles every memory access time (1 RAM read for PTE + 1 RAM read for data), hardware incorporates a special high-speed associative hardware cache called the **Translation Lookaside Buffer (TLB)**.\n\n**Effective Access Time (EAT) Formulations:**\nLet $\\alpha$ be the TLB hit ratio, $T_{\\text{tlb}}$ be the TLB search time, and $T_{\\text{mem}}$ be the main memory access time:\n- **On a TLB Hit ($\u0007lpha$):** Frame $f$ is found in parallel inside the TLB ($T_{\\text{tlb}}$), then the data word is read from RAM ($T_{\\text{mem}}$):\n  $$T_{\\text{hit}} = T_{\\text{tlb}} + T_{\\text{mem}}$$\n- **On a TLB Miss ($1 - \\alpha$):** TLB search fails ($T_{\\text{tlb}}$); CPU reads page table in RAM ($T_{\\text{mem}}$), updates the TLB, then reads data word from RAM ($T_{\\text{mem}}$):\n  $$T_{\\text{miss}} = T_{\\text{tlb}} + 2 \\times T_{\\text{mem}}$$\n- **Combined Single-Level EAT Formula:**\n  $$\\text{EAT} = \\alpha (T_{\\text{tlb}} + T_{\\text{mem}}) + (1 - \\alpha)(T_{\\text{tlb}} + 2 T_{\\text{mem}}) = T_{\\text{tlb}} + (2 - \\alpha) T_{\\text{mem}}$$\n- **Multi-Level ($k$-level) Page Table EAT Formula:**\n  A TLB miss requires traversing $k$ levels of page tables in RAM before accessing data ($k + 1$ RAM accesses total):\n  $$\\text{EAT}_{k\\text{-level}} = \\alpha (T_{\\text{tlb}} + T_{\\text{mem}}) + (1 - \\alpha)[T_{\\text{tlb}} + (k + 1) T_{\\text{mem}}]$$",
+        "table": {
+          "headers": [
+            "Scenario (VIT C2 Q8 Benchmark)",
+            "Hit Ratio (\u03b1)",
+            "Mathematical Formula",
+            "Effective Access Time (EAT)",
+            "Performance Analysis"
           ],
-        },
+          "rows": [
+            [
+              "Baseline (No TLB)",
+              "0%",
+              "2 * T_mem = 2 * 100 ns",
+              "200 ns",
+              "100% memory overhead (2x slowdown)"
+            ],
+            [
+              "C2 Q8 Case 1 (80% Hit)",
+              "80%",
+              "0.80(10 + 100) + 0.20(10 + 200)",
+              "130 ns",
+              "35% faster than no TLB (130 ns vs 200 ns)"
+            ],
+            [
+              "C2 Q8 Case 2 (95% Hit)",
+              "95%",
+              "0.95(10 + 100) + 0.05(10 + 200)",
+              "115 ns",
+              "15 ns faster than 80% (11.54% speedup)"
+            ],
+            [
+              "Ideal TLB (99% Hit)",
+              "99%",
+              "0.99(110) + 0.01(210)",
+              "111 ns",
+              "Near-optimal (only 11% overhead over raw RAM)"
+            ],
+            [
+              "2-Level Page Table (95% Hit)",
+              "95%",
+              "0.95(110) + 0.05(10 + 3 * 100)",
+              "120 ns",
+              "Miss penalty is 310 ns, but EAT remains 120 ns"
+            ]
+          ]
+        }
       },
+      {
+        "heading": "Page Table Hierarchies: Hierarchical, Hashed, and Inverted Page Tables",
+        "body": "Modern 64-bit systems cannot use simple linear page tables because a 64-bit address space with 4 KB pages requires $2^{52}$ entries per process (over 30 petabytes of page table RAM per process!). Three advanced page table structures solve this scaling challenge:",
+        "table": {
+          "headers": [
+            "Architecture",
+            "Structure & Organization",
+            "Memory Footprint",
+            "TLB Miss Cost",
+            "Key Advantage & Limitation"
+          ],
+          "rows": [
+            [
+              "Hierarchical (Multi-Level)",
+              "Splits virtual page number into $k$ levels (e.g. Two-level: $p_1, p_2, d$; x86-64 uses 4-level PML4: 9+9+9+9+12 bits). Pages the page table itself.",
+              "Small for sparse memory: only allocated page table pages reside in RAM; unmapped regions require zero table pages.",
+              "High ($k + 1$ memory accesses on miss: 5 memory accesses on x86-64 without TLB!).",
+              "Advantage: Clean tree structure; standard in modern hardware. Limitation: High TLB miss penalty."
+            ],
+            [
+              "Hashed Page Table",
+              "Virtual page number $p$ is hashed into a hash table. Each bucket contains a linked list of $\\langle p, f, \\text{next}\\rangle$ tuples.",
+              "Proportional to the number of active virtual pages, not the full virtual address space size.",
+              "Moderate (hash computation + linked list traversal + 1 memory access for data).",
+              "Advantage: Ideal for sparse 64-bit address spaces. Limitation: Collisions lengthen search chains; Clustered tables map 1 entry to multiple pages."
+            ],
+            [
+              "Inverted Page Table",
+              "Has exactly ONE entry per physical frame in RAM. Indexed by frame number $f$, storing $\\langle\\text{PID}, p\\rangle$.",
+              "Fixed and minimal: Proportional strictly to physical RAM size, independent of process count or VAS size!",
+              "High unless accelerated by hash anchor table: searching table for $\\langle\\text{PID}, p\\rangle$ requires linear scan or hash lookup.",
+              "Advantage: Massive RAM savings (32 MB for 16 GB RAM). Limitation: Shared memory is difficult because each frame holds only one $\\langle\\text{PID}, p\\rangle$ entry."
+            ]
+          ]
+        }
+      },
+      {
+        "heading": "Segmentation Hardware, Base-Limit Bounds Validation & C1 Set 1-2 Q5 Translation Table",
+        "body": "While paging is physical and transparent to the programmer, **Segmentation** reflects the programmer's view of memory as logical variable-sized modules: Code/Text, Global Data, Heap, Stack, and Subroutines.\n\n**Logical Address & Bounds Validation:**\nA logical address is a 2-tuple: $\\langle\\text{Segment Number } s, \\text{Offset } d\\rangle$.\nThe **Segment Table** contains two registers for each segment: **Base** (starting physical address in RAM) and **Limit** (length of the segment in bytes).\n\n**Hardware Validation Rule:**\nHardware performs a strict comparison:\n$$\\text{Condition: } d < \\text{Limit}[s]$$\n- If $d < \\text{Limit}[s]$ is **TRUE**: The access is legal. Physical Address $= \\text{Base}[s] + d$.\n- If $d \\ge \\text{Limit}[s]$ is **FALSE**: The access violates segment bounds! Hardware raises an immediate **Addressing Error TRAP (Segmentation Fault / SIGSEGV)**.\n\n*Crucial Exam Rule:* Offsets are 0-indexed ($0 \\le d \\le \\text{Limit} - 1$). If $d = \\text{Limit}$, it is an immediate TRAP!",
+        "diagramId": "m4-segmentation-hw",
+        "table": {
+          "headers": [
+            "Logical Address (VIT C1 1-2 Q5)",
+            "Segment",
+            "Base",
+            "Limit",
+            "Hardware Check (offset < limit)",
+            "Physical Address Result"
+          ],
+          "rows": [
+            [
+              "(0, 250)",
+              "Code",
+              "1000",
+              "400",
+              "250 < 400 (TRUE - Valid)",
+              "1000 + 250 = 1250"
+            ],
+            [
+              "(1, 350)",
+              "Data",
+              "2500",
+              "300",
+              "350 < 300 (FALSE - Bounds Violation!)",
+              "**TRAP: Addressing Error (SIGSEGV)**"
+            ],
+            [
+              "(2, 400)",
+              "Heap",
+              "4000",
+              "500",
+              "400 < 500 (TRUE - Valid)",
+              "4000 + 400 = 4400"
+            ],
+            [
+              "(3, 150)",
+              "Stack",
+              "6000",
+              "200",
+              "150 < 200 (TRUE - Valid)",
+              "6000 + 150 = 6150"
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'Why Inverted Page Tables Save Gigabytes on 64-Bit Systems',
-      problem:
-        'A 64-bit system has 4 KB pages and 16 GB of physical RAM. Compare 1-level page table entries per process vs Inverted Page Table entries system-wide.',
-      solution:
-        '1-level table requires `2^64 / 2^12 = 2^52` entries per process (impossible!). An **Inverted Page Table** needs only `16 GB / 4 KB = 2^34 / 2^12 = 2^22 = 4,194,304` entries **total for the entire machine**, regardless of how many processes run (trade-off: slower lookup requiring hash table & harder shared memory).',
+    "workedExample": {
+      "title": "Why Inverted Page Tables Save Gigabytes on 64-Bit Systems & EAT Under Multi-Level Paging",
+      "problem": "Part A: A 64-bit architecture uses 4 KB pages and has 16 GB of physical RAM. Compare the entry count and memory footprint of a 1-level linear page table (at 8 bytes/PTE) vs an Inverted Page Table.\nPart B: In a 4-level paging system (x86-64) with TLB access time = 10 ns, RAM access time = 100 ns, and hit ratio \u03b1 = 98%, compute the Effective Access Time.",
+      "solution": "Part A:\n1. 1-level table entries per process: $2^{64} / 2^{12} = 2^{52}$ entries. At 8 B/entry = $2^{55}$ bytes = **32 Petabytes** per process (impossible to store!).\n2. Inverted Page Table entries system-wide: Physical frames $= 16\\text{ GB} / 4\\text{ KB} = 2^{34} / 2^{12} = 2^{22} = 4,194,304$ entries. At 8 B/entry = $4,194,304 \\times 8\\text{ B} = 33,554,432\\text{ B} =$ **32 MB total for the entire operating system**, regardless of how many processes run!\n\nPart B:\n- TLB Hit time $= 10 + 100 = 110\\text{ ns}$.\n- TLB Miss time $= 10 + (4 + 1) \\times 100 = 10 + 500 = 510\\text{ ns}$ (4 page table reads + 1 data read).\n- $\\text{EAT} = 0.98(110) + 0.02(510) = 107.8 + 10.2 = \\mathbf{118\\text{ ns}}$."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Slot C2+TC2 Q8 (10M) & Slot C1 Set 1-2 Q5 (10M)',
-        promptSummary: 'C2 Q8: Paging bit splits (3M), EAT 80% (3M), EAT 95% speedup (2M), Why TLB helps (2M). C1 1-2 Q5: Segmentation translation (4M) + Fragmentation (6M).',
-        markBreakdown: 'Bit formula + powers of 2 (3M) + EAT formula & substitution (5M) + 2-RAM-access insight (2M)',
-        solutionSteps: [
-          'Always convert KB/MB to exact powers of 2 first (`64 KB = 2^16`, `16 KB = 2^14`, `1 KB = 2^10`).',
-          'Show both `Hit = T_tlb + T_mem` and `Miss = T_tlb + 2*T_mem` explicitly before plugging `α`.',
-          'For Segmentation, write the explicit boolean check `offset < limit` on every row before adding `base + offset`.',
+        "paperSource": "Slot C2+TC2 Q8 (10M) & Slot C1 Set 1-2 Q5 (10M)",
+        "promptSummary": "C2 Q8: Paging bit splits (3M), EAT at 80% hit (3M), EAT at 95% hit & speedup (2M), hardware role of TLB (2M). C1 1-2 Q5: Segmentation base-limit translation table (4M) + Internal vs External Fragmentation comparison (6M).",
+        "markBreakdown": "Powers-of-2 bit splits (3M) + EAT formula with 2-RAM-access miss substitution (5M) + Segmentation offset < limit checks (4M) + Fragmentation analysis (8M)",
+        "solutionSteps": [
+          "Always convert sizes to exact powers of 2 first: $64\\text{ KB} = 2^{16}$, $16\\text{ KB} = 2^{14}$, $1\\text{ KB} = 2^{10}$.",
+          "State the bit split formulas: Offset $d = \\log_2(\\text{PageSize})$, Page $p = \\log_2(\\text{VAS}) - d$, Frame $f = \\log_2(\\text{RAM}) - d$.",
+          "Write out both terms of the EAT formula explicitly: $\\text{EAT} = \\alpha(T_{\\text{tlb}} + T_{\\text{mem}}) + (1 - \\alpha)(T_{\\text{tlb}} + 2 T_{\\text{mem}})$. Show substitution for $\\alpha=0.80$ (130 ns) and $\\alpha=0.95$ (115 ns). Speedup $= 130 - 115 = 15\\text{ ns}$ ($11.54\\%$ improvement).",
+          "For Segmentation, write the boolean check $d < \\text{Limit}$ on EVERY row before adding $\\text{Base} + d$, and flag Bounds Violation TRAPs clearly."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-pt-1",
+        "question": "A 32-bit logical address space uses 8 KB (2^13 B) page size and the system has 1 GB (2^30 B) physical RAM. How many bits are in the Page Number (p), Offset (d), and Frame Number (f)?",
+        "options": [
+          "p = 19, d = 13, f = 17",
+          "p = 20, d = 12, f = 18",
+          "p = 16, d = 16, f = 14",
+          "p = 13, d = 19, f = 17"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-pt-1',
-        question: 'If a logical address space is 1 MB (`2^20` B) and page size is 4 KB (`2^12` B), how many bits form the Page Number `p` and Offset `d`?',
-        options: ['p = 12, d = 8', 'p = 8, d = 12', 'p = 10, d = 10', 'p = 16, d = 4'],
-        correctIndex: 1,
-        explanation: 'Offset `d = log2(4096) = 12` bits; Page number `p = 20 - 12 = 8` bits (256 pages).',
+        "correctIndex": 0,
+        "explanation": "Offset d = log2(8192) = 13 bits. Page number p = 32 - 13 = 19 bits. Physical address = log2(1 GB) = 30 bits. Frame number f = 30 - 13 = 17 bits."
       },
       {
-        id: 'sc-m4-pt-2',
-        question: 'In Segmentation, if segment `S` has `base = 2000` and `limit = 300`, what happens for `(S, 300)`?',
-        options: ['Maps to physical address 2300', 'Raises an Addressing Error TRAP because valid offsets are 0..299', 'Maps to 2299', 'Triggers Copy-on-Write'],
-        correctIndex: 1,
-        explanation: 'The hardware check is strictly `offset < limit`. `300 < 300` is false -> TRAP!',
+        "id": "sc-m4-pt-2",
+        "question": "Why does a TLB miss in a single-level paging system require TWO main memory accesses?",
+        "options": [
+          "One access to flush the TLB and one access to restart the instruction",
+          "One access to read the Page Table Entry from RAM and one access to read the actual data/instruction from RAM",
+          "One access to read the segment table and one access to write the dirty bit",
+          "Two accesses are only needed if the page fault handler fails"
+        ],
+        "correctIndex": 1,
+        "explanation": "On a TLB miss, the translation is not cached. The CPU must first read the Page Table in physical RAM to obtain the frame number, load it into the TLB, and then perform the second RAM access to read the actual memory operand."
       },
+      {
+        "id": "sc-m4-pt-3",
+        "question": "In Segmentation, a segment has Base = 3000 and Limit = 450. What physical address does the logical address (Segment, 450) map to?",
+        "options": [
+          "3450",
+          "3449",
+          "Raises an Addressing Error TRAP (Segmentation Fault)",
+          "3000"
+        ],
+        "correctIndex": 2,
+        "explanation": "The hardware check is strictly offset < limit. Valid offsets are 0 to 449. For offset = 450, 450 < 450 is false, raising an immediate Addressing Error TRAP."
+      }
     ],
-    examTip: 'Never forget the second memory access on a TLB miss (`T_tlb + 2 * T_mem`) — writing `+ T_mem` instead of `+ 2 * T_mem` is one of the top -2M FAT errors!',
+    "examTip": "Never forget the second memory access on a TLB miss (`T_tlb + 2 * T_mem`) in single-level paging, and `T_tlb + (k + 1) * T_mem` for k-level paging. In Segmentation, always explicitly write the boolean condition `offset < limit` on every row before performing addition!"
   },
   {
-    topicId: 'm4-virtual-memory',
-    moduleId: 'm4',
-    title: 'Virtual Memory, Demand Paging Fault Cycle, Copy-on-Write & Fault-Rate EAT',
-    summary:
-      'Demand paging loads pages into RAM lazily only when referenced via a 6-step hardware/OS page-fault handler, enabling processes larger than physical RAM and ultra-fast `fork()` via Copy-on-Write.',
-    sourceDecks: ['Silberschatz 10e Ch 10 (§10.1–10.3)', 'VITC BACSE106 Module 4'],
-    keyPoints: [
-      'Each Page Table Entry carries a **Valid–Invalid bit**: `v` = page is legal & resident in RAM; `i` = either illegal address OR legal page currently on disk (backing store).',
-      '6-Step Page Fault Sequence: **1. Trap to OS -> 2. Validate reference & find disk block -> 3. Locate free frame -> 4. Disk I/O read into frame -> 5. Update PTE (`valid=v`) -> 6. Restart instruction**.',
-      '**Demand Paging EAT**: `EAT = (1 - p) * ma + p * PageFaultTime`. Because disk/SSD I/O is orders of magnitude slower than RAM (`ms` vs `ns`), `p` must stay `< 10^-5` to avoid severe slowdown!',
-      '**Copy-on-Write (COW)**: `fork()` shares pages read-only between parent and child; physical copy occurs ONLY when one modifies a shared page.',
+    "topicId": "m4-virtual-memory",
+    "moduleId": "m4",
+    "title": "Virtual Memory Architecture, Demand Paging 6-Step Fault Handler & Copy-on-Write",
+    "summary": "Demand paging loads pages into RAM lazily only when referenced via a 6-step hardware/OS page-fault handler, enabling processes larger than physical RAM and ultra-fast process creation via Copy-on-Write.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 10 (\u00a710.1\u201310.3)",
+      "VITC Past Papers: High-Yield M4 Analysis",
+      "Silberschatz 10e Ch 10 (\u00a710.4\u201310.5)"
     ],
-    sections: [
+    "keyPoints": [
+      "Virtual Memory Concept: Separates user logical memory from physical memory, allowing execution of processes whose address spaces exceed physical RAM, enabling higher multiprogramming degrees and lower creation overhead.",
+      "Valid-Invalid Bit ($v/i$): In PTE. $v$ indicates page is legal and resident in physical RAM; $i$ indicates address is either illegal (trap) OR valid but currently resident on backing store (disk/swap space).",
+      "6-Step Page Fault Handling Sequence: (1) Hardware trap to OS on accessing invalid page, (2) Save process context and check internal PCB/VMA table for legality, (3) Find free frame in RAM (or evict victim via page replacement), (4) Issue disk I/O to read page into frame, (5) Update PTE ($v=1$, frame $f$) on I/O completion interrupt, (6) Restore registers and **restart the faulting instruction**.",
+      "Instruction Restart Complexity: CPU must resume the exact trapped instruction. Requires hardware support for multi-word instructions, condition code restoration, and auto-increment/decrement addressing modes (`MOV (R1)+, (R2)+`) where registers were modified before the fault.",
+      "Modify (Dirty) Bit Optimization: Hardware sets Modify bit $M=1$ on any write access. If $M=0$ when evicted, victim is clean (identical to backing store) and can be overwritten without disk write, cutting page fault latency in half.",
+      "Demand Paging EAT Formula: $\\text{EAT} = (1 - p) \\times ma + p \\times \\text{PageFaultTime}$. Because disk I/O is $10^5 \\times$ slower than RAM ($8\\text{ ms}$ vs $100\\text{ ns}$), fault rate $p$ must remain extremely small ($< 10^{-5}$) to prevent severe performance collapse.",
+      "Copy-on-Write (COW): Optimizes `fork()` by sharing physical pages read-only between parent and child. Physical frame allocation and copy occur only when either process attempts to write to a shared page."
+    ],
+    "sections": [
       {
-        heading: '6-Step Hardware/OS Page Fault Handling Cycle',
-        body: 'Pure demand paging starts a process with zero pages in RAM and faults them in on first touch. A **modify (dirty) bit** avoids writing unmodified victim pages back to disk on eviction, cutting page-fault I/O in half.',
-        diagramId: 'm4-demand-paging-fault',
+        "heading": "The 6-Step Hardware and Kernel Page-Fault Handling Sequence",
+        "body": "Pure demand paging starts a process with zero pages resident in physical RAM; every initial memory reference faults into the kernel. The complete hardware-kernel interaction follows 6 precise steps:\n\n1. **Hardware Memory Reference & Trap:** CPU attempts to access a virtual address. Hardware checks the PTE; seeing `valid bit = i`, the CPU issues an internal hardware interrupt (**Page Fault Trap**) and suspends user execution.\n2. **OS State Preservation & Legality Validation:** The OS kernel saves process registers, program counter, and context into the PCB. It consults internal Virtual Memory Area (VMA) tables:\n   - If the reference is illegal (out of bounds or permission violation) $\\implies$ OS raises `SIGSEGV` and terminates the process.\n   - If the reference is legal but not in RAM $\\implies$ OS initiates page-in handling.\n3. **Locate a Free Physical Frame:** The OS inspects the physical frame free-list:\n   - If a free frame exists $\\implies$ allocate it.\n   - If no free frame exists $\\implies$ invoke the **Page Replacement Algorithm** (FIFO, LRU, Clock) to select a victim frame. If the victim frame is dirty ($M=1$), write it back to swap disk; clear the victim's valid bit ($v=0$) in its owning PTE.\n4. **Schedule Disk Backing-Store Read:** The OS issues a disk I/O command to read the requested page from swap space / executable file into the allocated physical frame. The faulting process is placed into the **Waiting / Blocked Queue**, freeing the CPU for other ready processes.\n5. **I/O Interrupt & Page Table Entry Update:** When the disk controller finishes DMA transfer, it raises a hardware I/O interrupt. The OS updates the process's PTE: records the new frame number $f$, sets `valid bit = v`, and clears `modify bit = 0`. The process transitions from Waiting to **Ready Queue**.\n6. **Instruction Restart:** When the CPU scheduler dispatches the process, the OS restores saved registers and PC, and **restarts the exact instruction** that faulted.",
+        "diagramId": "m4-demand-paging-fault"
       },
       {
-        heading: 'Calculating Maximum Tolerable Page-Fault Rate `p`',
-        body: 'Watch units rigorously! Convert `ms` to `ns` (`1 ms = 1,000,000 ns`) BEFORE solving for `p`.',
-        codeBlock: `Given: ma = 200 ns, Page Fault Service Time = 8 ms = 8,000,000 ns.
-Find max fault rate p for <= 10% performance degradation (EAT <= 220 ns):
-  220 >= (1 - p)(200) + p(8,000,000)
-  220 >= 200 + 7,999,800 * p
-   20 >= 7,999,800 * p
-    p <= 20 / 7,999,800 ≈ 0.0000025  (at most 1 fault per 400,000 accesses!)`,
+        "heading": "Demand Paging Effective Access Time (EAT) & Maximum Tolerable Fault Rate",
+        "body": "Because magnetic disk or SSD page-fault service times are in milliseconds ($10^{-3}\\text{ s}$) while RAM memory access times ($ma$) are in nanoseconds ($10^{-9}\\text{ s}$), even a tiny fraction of page faults devastates computer performance.\n\n**Demand Paging EAT Formula:**\nLet $ma$ be memory access time, $p$ be page fault rate ($0 \\le p \\le 1$), and $PFT$ be Page Fault Service Time:\n$$\\text{EAT} = (1 - p) \\times ma + p \\times PFT$$\nWith the Modify (Dirty) Bit, let $\\beta$ be the probability that an evicted page is dirty (requiring disk write + read):\n$$PFT = (1 - \\beta) \\times T_{\\text{clean}} + \\beta \\times T_{\\text{dirty}}$$\nwhere $T_{\\text{clean}} = \\text{Disk Read} + \\text{Overhead}$ and $T_{\\text{dirty}} = \\text{Disk Write} + \\text{Disk Read} + \\text{Overhead}$.",
+        "codeBlock": "// Mathematical Derivation for Maximum Tolerable Fault Rate p:\nGiven: ma = 200 ns, PFT = 8 ms = 8,000,000 ns.\nRequirement: Performance degradation <= 10% (EAT <= 220 ns).\n\nEquation:\n  EAT = (1 - p) * 200 + p * 8,000,000 <= 220\n  200 - 200p + 8,000,000p <= 220\n  7,999,800 * p <= 20\n  p <= 20 / 7,999,800 ~ 0.0000025 = 2.5 * 10^-6\n\nConclusion: To avoid more than 10% slowdown, the system\nmust allow AT MOST 1 page fault every 400,000 memory accesses!"
       },
+      {
+        "heading": "Copy-on-Write (COW) Mechanics and Zero-Fill-on-Demand",
+        "body": "In Unix/Linux, traditional `fork()` duplicated the entire address space of the parent for the child, which was massively wasteful when followed immediately by `exec()`.\n\n**Copy-on-Write Implementation:**\n1. When `fork()` is called, parent and child initially share all physical frames.\n2. The OS marks all shared pages as **Read-Only** and sets an internal **Copy-on-Write (COW)** flag in the VMA.\n3. Both processes can read shared pages concurrently without overhead.\n4. When either process attempts a `write` operation to a shared page, the MMU hardware intercepts the violation (write to read-only page) and raises a trap.\n5. The OS kernel inspects the COW flag, allocates a brand new physical frame, copies the 4 KB content into the new frame, updates the writing process's PTE to point to the new frame with **Read-Write** permissions, and restarts the instruction.\n\n**Zero-Fill-on-Demand (ZFOD):**\nNew stack and heap allocations are allocated frames that are zeroed out on demand only when accessed, protecting against information leakage across processes.",
+        "table": {
+          "headers": [
+            "Process Spawning Method",
+            "Page Duplication Timing",
+            "RAM Overhead",
+            "fork() Execution Speed",
+            "Safety"
+          ],
+          "rows": [
+            [
+              "Traditional fork()",
+              "Immediate full copy of all pages",
+              "Doubles process RAM usage",
+              "Slow (copies hundreds of MBs)",
+              "High (complete memory isolation)"
+            ],
+            [
+              "Copy-on-Write fork()",
+              "Lazy copy; only pages modified by parent/child",
+              "Zero overhead for unmodified pages",
+              "Near instantaneous (copies page tables only)",
+              "High (transparent hardware isolation)"
+            ],
+            [
+              "vfork()",
+              "No copy; child runs in parent's address space",
+              "Zero RAM overhead",
+              "Instantaneous",
+              "Dangerous (child modifying variables alters parent state!)"
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'Dirty-Bit Savings in Page Fault Service Time',
-      problem:
-        'Memory access = `100 ns`. Page replacement takes `8 ms` if the victim page is clean (read-only) and `20 ms` if dirty (70% of evicted pages are dirty). Compute average page-fault service time and EAT for `p = 0.0001`.',
-      solution:
-        'Avg Page Fault Time = `0.30(8 ms) + 0.70(20 ms) = 2.4 + 14.0 = 16.4 ms = 16,400,000 ns`. `EAT = 0.9999(100) + 0.0001(16,400,000) = 99.99 + 1640 = 1739.99 ns` (17.4× slowdown!).',
+    "workedExample": {
+      "title": "Dirty-Bit Savings in Page Fault Service Time & EAT",
+      "problem": "A computer system has main memory access time ma = 100 ns. Page replacement takes 8 ms if the victim is clean, and 20 ms if the victim is dirty. Studies show that 70% of evicted pages are dirty (modified). Compute the average page fault service time and calculate the resulting EAT if the page fault rate is p = 0.0001 (1 in 10,000 accesses).",
+      "solution": "Step 1: Compute Average Page Fault Service Time (PFT):\n  PFT = (1 - \u03b2) * T_clean + \u03b2 * T_dirty\n  PFT = 0.30 * (8 ms) + 0.70 * (20 ms) = 2.4 ms + 14.0 ms = 16.4 ms\n  Convert to nanoseconds: 16.4 ms = 16,400,000 ns.\n\nStep 2: Compute Demand Paging EAT:\n  EAT = (1 - p) * ma + p * PFT\n  EAT = (1 - 0.0001) * 100 ns + 0.0001 * 16,400,000 ns\n  EAT = 0.9999 * 100 ns + 1640 ns\n  EAT = 99.99 ns + 1640 ns = 1739.99 ns \u2248 1.74 \u03bcs.\n\nInsight: A tiny page fault rate of just 0.01% causes a 17.4x slowdown in memory execution!"
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Alpha Gap / High-Yield M4 Numerical (10M)',
-        promptSummary: 'Diagram the 6-step Page Fault handler (5M) and compute Demand Paging EAT / max fault rate `p` with dirty-bit weight (5M).',
-        markBreakdown: '6-step numbered diagram (5M) + Unit conversion + EAT equation & final p (5M)',
-        solutionSteps: [
-          'Draw the 6 numbered arrows connecting Page Table -> Trap -> OS -> Backing Store -> Free Frame -> Restart Instruction.',
-          'Convert all times to nanoseconds FIRST (`1 ms = 10^6 ns`), then solve `EAT = (1-p)*ma + p*PFT`.',
+        "paperSource": "High-Yield M4 Numerical & Architectural Prompt (10M)",
+        "promptSummary": "Draw and explain the 6-step Page Fault Handling Sequence (5M) and solve Demand Paging EAT with dirty-bit weights and maximum tolerable fault rate p (5M).",
+        "markBreakdown": "6-step numbered diagram & handler description (5M) + Unit conversion (ms -> ns) + EAT formula & algebraic solving for p (5M)",
+        "solutionSteps": [
+          "Draw the 6-step diagram: CPU -> Page Table (invalid bit) -> Trap to OS -> OS inspects PCB -> Disk Read to Free Frame -> PTE updated (valid bit) -> Instruction restarted.",
+          "Explain the role of the Modify/Dirty bit: clean pages require 0 disk writes on eviction, cutting page fault latency in half.",
+          "Always convert time units to nanoseconds BEFORE setting up the EAT inequality: `1 ms = 10^6 ns`, `1 \u03bcs = 10^3 ns`.",
+          "Set up `EAT = (1-p)*ma + p*PFT <= (1 + threshold)*ma` and solve cleanly for `p`."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-vm-1",
+        "question": "What is the primary operational purpose of the Modify (Dirty) bit in a Page Table Entry?",
+        "options": [
+          "To indicate whether a page is encrypted in RAM",
+          "To avoid writing an evicted victim page back to disk if it was never modified in RAM",
+          "To prevent Belady\u2019s Anomaly in FIFO replacement",
+          "To bypass the TLB cache lookup"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-vm-1',
-        question: 'What is the purpose of the Modify (Dirty) bit in a Page Table Entry?',
-        options: ['Indicates whether the page is encrypted', 'Avoids writing an evicted victim page back to disk if it was never modified in RAM', 'Prevents Belady’s anomaly', 'Replaces the TLB'],
-        correctIndex: 1,
-        explanation: 'Clean pages already match their copy on disk and can be overwritten directly without a swap-out disk write.',
+        "correctIndex": 1,
+        "explanation": "If a page in RAM has never been written to (dirty bit = 0), its contents are identical to the backing store copy on disk. The OS can simply overwrite the frame without performing an expensive disk write."
       },
       {
-        id: 'sc-m4-vm-2',
-        question: 'With `ma = 100 ns`, `PageFaultTime = 10 ms`, and `p = 0.00001` (`10^-5`), what is the EAT?',
-        options: ['100.1 ns', '200 ns', '1,100 ns', '10,100 ns'],
-        correctIndex: 1,
-        explanation: '`10 ms = 10,000,000 ns`. `p * PFT = 10^-5 * 10^7 = 100 ns`. `EAT ≈ 100 + 100 = 200 ns` (2× slowdown from just 0.001% faults!).',
+        "id": "sc-m4-vm-2",
+        "question": "Why is instruction restart challenging when a page fault occurs during an instruction with auto-increment addressing mode like MOV (R1)+, (R2)+?",
+        "options": [
+          "Because the disk controller cannot handle registers",
+          "Because R1 or R2 may have already been incremented before the fault on the second operand occurred, requiring architectural rollback",
+          "Because the CPU mode bit cannot switch to kernel mode",
+          "Because page tables cannot store register values"
+        ],
+        "correctIndex": 1,
+        "explanation": "If the source operand access modifies R1 before the destination operand page faults, restarting the instruction naively would increment R1 a second time. The OS/hardware must restore modified registers to their pre-instruction state."
       },
+      {
+        "id": "sc-m4-vm-3",
+        "question": "Given ma = 100 ns, PageFaultTime = 10 ms (10^7 ns), and p = 0.00001 (10^-5), what is the Demand Paging Effective Access Time?",
+        "options": [
+          "100.1 ns",
+          "200 ns (a 2x slowdown)",
+          "1,100 ns",
+          "10,000 ns"
+        ],
+        "correctIndex": 1,
+        "explanation": "EAT = (1 - 10^-5)(100) + 10^-5 * 10^7 = 100 + 100 = 200 ns. Even just 1 fault per 100,000 accesses doubles average memory access time!"
+      }
     ],
-    examTip: 'Always double-check `ms -> ns` (`× 10^6`) and `μs -> ns` (`× 10^3`) before computing Demand Paging EAT!',
+    "examTip": "Always convert milliseconds (1 ms = 10^6 ns) and microseconds (1 \u03bcs = 10^3 ns) to nanoseconds BEFORE doing algebra for p! Forgetting unit conversion is the #1 reason students lose 5 marks on demand paging numericals."
   },
   {
-    topicId: 'm4-page-replacement',
-    moduleId: 'm4',
-    title: 'Page Replacement Algorithms (FIFO, Belady’s Anomaly, OPT, LRU, Second-Chance Clock)',
-    summary:
-      'When physical frames are full, page replacement selects a victim frame; Optimal sets the theoretical lower bound, LRU approximates it using past locality, and FIFO risks Belady’s Anomaly.',
-    sourceDecks: ['Silberschatz 10e Ch 10 (§10.4)', 'VITC Past Papers: C1 2-2 Q6 (15M) & C2 Q7 (10M)'],
-    keyPoints: [
-      '**FIFO**: evicts the oldest *loaded* page (ignores recent hits). Suffers from **Belady’s Anomaly** (more frames -> more faults, e.g., `1,2,3,4,1,2,5,1,2,3,4,5`: 3 frames=9 faults vs 4 frames=10 faults).',
-      '**Optimal (OPT / Belady)**: evicts the resident page NOT used for the longest time in the *future*. Provably minimal faults; unimplementable in real OSes (requires future knowledge); tie-break = earliest loaded.',
-      '**LRU (Least Recently Used)**: evicts the resident page unused for the longest time in the *past*. Stack algorithm (immune to Belady’s Anomaly), implemented via hardware counters or doubly-linked stack.',
-      '**Second-Chance (Clock)**: circular FIFO queue with a **Reference Bit (`R`)** — if `R == 1`, clear `R = 0` and advance clock hand; evict first frame with `R == 0`.',
+    "topicId": "m4-page-replacement",
+    "moduleId": "m4",
+    "title": "Page Replacement Algorithms: FIFO, Belady\u2019s Anomaly Proof, OPT, LRU & Second-Chance Clock",
+    "summary": "When physical frames are saturated, page replacement algorithms choose victim frames; Optimal sets the theoretical lower bound, LRU approximates it using past locality, and FIFO risks Belady\u2019s Anomaly.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 10 (\u00a710.4)",
+      "VITC Past Papers: C1 Set 2-2 Q6 (15M) & C2 Q7 (10M)"
     ],
-    sections: [
+    "keyPoints": [
+      "Page Replacement Mechanism: On a page fault with no free frames, OS selects a victim frame, writes it to backing store if dirty ($M=1$), invalidates victim PTE ($v=0$), loads desired page into freed frame, and sets valid bit ($v=1$).",
+      "FIFO (First-In, First-Out): Evicts the oldest loaded page (earliest arrival timestamp). Ignores reference recency and frequency, and suffers from **Belady\u2019s Anomaly**.",
+      "Belady\u2019s Anomaly Formal Proof: Allocating *more* physical frames can cause *more* page faults for the same reference string under FIFO! For string `1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5`: 3 frames produce **9 faults** while 4 frames produce **10 faults** ($10 > 9$!).",
+      "Stack Algorithms & Inclusion Property: An algorithm is a Stack Algorithm if the set of pages resident in $m$ frames is strictly a subset of the pages resident in $m + 1$ frames at every time $t$: $B_t(m) \\subseteq B_t(m + 1)$. Stack algorithms (LRU, OPT) are **mathematically immune to Belady\u2019s Anomaly**.",
+      "Optimal Page Replacement (OPT / Belady\u2019s MIN): Evicts the page that will not be used for the longest period of time in the future. Provably optimal minimum page faults; unimplementable in real systems (requires future oracle); used as evaluation benchmark. Standard tie-break rule: earliest loaded (FIFO tie-break).",
+      "Least Recently Used (LRU): Backward-looking approximation of OPT (relying on temporal locality: past behavior predicts future behavior). Evicts page unused for the longest time in the past. Implemented via hardware counters/timers or doubly linked stack; hardware cost is high.",
+      "Second-Chance (Clock) Algorithm: Practical $O(1)$ hardware approximation of LRU using a single Reference bit ($R$) per frame and a circular buffer with a clock hand. Evicts first frame with $R=0$, clearing $R=1 \\to 0$ as the hand advances.",
+      "Enhanced Second-Chance (Clock with Dirty Bit): Evaluates $\\langle R, M\\rangle$ in 4 ordered preference classes: Class 0 $(0, 0)$ is ideal victim (unreferenced, clean), Class 1 $(0, 1)$ (unreferenced, dirty), Class 2 $(1, 0)$ (referenced, clean), Class 3 $(1, 1)$ (referenced, dirty)."
+    ],
+    "sections": [
       {
-        heading: 'Verified Real FAT Results: C1 Set 2-2 Q6 (15M) & C2 Q7 (10M)',
-        body: 'Verify every single frame-by-frame column interactively in **Lab 4 (Memory & Paging Lab)**! Notice how both papers test exact 4-frame comparisons across FIFO, LRU, and OPT.',
-        table: {
-          headers: ['VIT FAT Paper', 'Reference String & Frames', 'FIFO Faults', 'LRU Faults', 'OPT Faults'],
-          rows: [
-            ['C1 Set 2-2 Q6 (15M)', '4 frames · 25 refs (`1,2,3,4,2,1,5,2,1,6,3,2,1,4,2,5,1,2,7,1,3,2,4,1,2`)', '**17** (68%)', '**12** (48%)', '**10** (40%)'],
-            ['C2+TC2 Q7 (10M)', '4 frames · 20 refs (`1,2,3,4,2,1,5,6,2,1,2,3,7,6,3,2,1,2,3,6`)', '**14** (70%)', '**10** (50%)', '**8** (40%)'],
-            ['Belady Benchmark', '`1,2,3,4,1,2,5,1,2,3,4,5` (3 vs 4 frames)', '3f=**9**, 4f=**10**!', '3f=10, 4f=8', '3f=7, 4f=6'],
+        "heading": "Belady\u2019s Anomaly Definition, Cause & Rigorous FIFO Proof",
+        "body": "Ordinarily, one expects that giving a process more physical page frames will decrease or at least keep page faults constant. In 1969, L\u00e1szl\u00f3 B\u00e9l\u00e1dy proved that under FIFO replacement, **allocating more frames can actually INCREASE page faults**.\n\n**The Formal Silberschatz Proof Benchmark:**\nReference string (12 references): `1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5`.\nLet us trace FIFO with 3 frames vs 4 frames side-by-side:",
+        "table": {
+          "headers": [
+            "Ref #",
+            "Page Ref",
+            "FIFO (3 Frames) State",
+            "3-Frame Event",
+            "FIFO (4 Frames) State",
+            "4-Frame Event",
+            "Divergence Analysis"
           ],
+          "rows": [
+            [
+              "1",
+              "1",
+              "[1, -, -]",
+              "Fault (F1)",
+              "[1, -, -, -]",
+              "Fault (F1)",
+              "Both load page 1"
+            ],
+            [
+              "2",
+              "2",
+              "[1, 2, -]",
+              "Fault (F2)",
+              "[1, 2, -, -]",
+              "Fault (F2)",
+              "Both load page 2"
+            ],
+            [
+              "3",
+              "3",
+              "[1, 2, 3]",
+              "Fault (F3)",
+              "[1, 2, 3, -]",
+              "Fault (F3)",
+              "Both load page 3"
+            ],
+            [
+              "4",
+              "4",
+              "[4, 2, 3]",
+              "Fault (F4 - evict 1)",
+              "[1, 2, 3, 4]",
+              "Fault (F4)",
+              "3-frame full, evicts 1; 4-frame fills slot 4"
+            ],
+            [
+              "5",
+              "1",
+              "[4, 1, 3]",
+              "Fault (F5 - evict 2)",
+              "[1, 2, 3, 4]",
+              "**HIT (H1)**",
+              "4-frame enjoys hit on page 1!"
+            ],
+            [
+              "6",
+              "2",
+              "[4, 1, 2]",
+              "Fault (F6 - evict 3)",
+              "[1, 2, 3, 4]",
+              "**HIT (H2)**",
+              "4-frame enjoys hit on page 2!"
+            ],
+            [
+              "7",
+              "5",
+              "[5, 1, 2]",
+              "Fault (F7 - evict 4)",
+              "[5, 2, 3, 4]",
+              "Fault (F5 - evict 1)",
+              "3-frame evicts 4; 4-frame evicts 1"
+            ],
+            [
+              "8",
+              "1",
+              "[5, 1, 2]",
+              "**HIT (H1)**",
+              "[5, 1, 3, 4]",
+              "Fault (F6 - evict 2)",
+              "3-frame has 1 in RAM (HIT!); 4-frame faults!"
+            ],
+            [
+              "9",
+              "2",
+              "[5, 1, 2]",
+              "**HIT (H2)**",
+              "[5, 1, 2, 4]",
+              "Fault (F7 - evict 3)",
+              "3-frame has 2 in RAM (HIT!); 4-frame faults!"
+            ],
+            [
+              "10",
+              "3",
+              "[5, 3, 2]",
+              "Fault (F8 - evict 1)",
+              "[5, 1, 2, 3]",
+              "Fault (F8 - evict 4)",
+              "Both fault on 3"
+            ],
+            [
+              "11",
+              "4",
+              "[5, 3, 4]",
+              "Fault (F9 - evict 2)",
+              "[4, 1, 2, 3]",
+              "Fault (F9 - evict 5)",
+              "Both fault on 4"
+            ],
+            [
+              "12",
+              "5",
+              "[5, 3, 4]",
+              "**HIT (H3)**",
+              "[4, 5, 2, 3]",
+              "Fault (F10 - evict 1)",
+              "3-frame has 5 (HIT!); 4-frame faults!"
+            ]
+          ]
         },
+        "codeBlock": "// Belady's Anomaly Result Summary:\nWith 3 Frames: 9 Page Faults  (3 Hits)\nWith 4 Frames: 10 Page Faults (2 Hits)\n10 Faults > 9 Faults! Proves FIFO suffers from Belady's Anomaly."
       },
       {
-        heading: 'Why LRU & OPT Are Immune to Belady’s Anomaly (Stack Property)',
-        body: 'An algorithm satisfies the **Inclusion (Stack) Property** if the set of pages resident in `k` frames is ALWAYS a subset of the pages resident in `k + 1` frames at every timestamp `t`. Therefore adding frames can never turn a hit into a miss for **OPT** or **LRU**, whereas FIFO violates inclusion.',
+        "heading": "Stack Algorithms & Mathematical Proof of LRU/OPT Immunity",
+        "body": "**Definition of a Stack Algorithm:**\nAn algorithm is called a **Stack Algorithm** if the set of pages resident in physical memory with $n$ frames at any time $t$, denoted $B_t(n)$, is ALWAYS a subset of the pages resident with $n + 1$ frames:\n$$B_t(n) \\subseteq B_t(n + 1) \\quad \\forall t, n$$\n\n**Proof of Immunity to Belady\u2019s Anomaly:**\nSuppose a reference at time $t$ to page $P$ results in a page HIT when memory has $n$ frames. That means $P \\in B_t(n)$.\nBy the stack inclusion property, $B_t(n) \\subseteq B_t(n + 1)$, which mathematically guarantees that $P \\in B_t(n + 1)$.\nTherefore, the reference to $P$ MUST also be a page HIT when memory has $n + 1$ frames. It is impossible for an additional frame to convert a hit into a miss under any stack algorithm.\n\n**Why LRU and OPT are Stack Algorithms:**\n- In **LRU**, $B_t(n)$ is simply the $n$ most recently referenced unique pages prior to time $t$. The $n$ most recently used pages are trivially a subset of the $n+1$ most recently used pages!\n- In **OPT**, $B_t(n)$ is the $n$ pages whose next reference in the future occurs earliest. These $n$ pages are always a subset of the $n+1$ pages with earliest future references.\n- In **FIFO**, $B_t(n)$ depends on when pages were *loaded*, not when they are accessed. Hits on resident pages do not update load times, causing memory states to diverge completely (as shown at references 7\u201312 above). Hence FIFO violates inclusion.",
+        "table": {
+          "headers": [
+            "Algorithm",
+            "Stack Algorithm?",
+            "Belady Anomaly?",
+            "Implementation Complexity",
+            "Real-World Feasibility"
+          ],
+          "rows": [
+            [
+              "FIFO",
+              "No (violates inclusion)",
+              "Yes (e.g. 9 -> 10 faults)",
+              "O(1) queue pointer",
+              "Poor performance; rarely used alone"
+            ],
+            [
+              "Optimal (OPT)",
+              "Yes (satisfies inclusion)",
+              "Mathematically Immune",
+              "Requires future oracle",
+              "Impossible in real OS; theoretical lower bound"
+            ],
+            [
+              "LRU",
+              "Yes (satisfies inclusion)",
+              "Mathematically Immune",
+              "High (counters or 6-pointer stack update per read)",
+              "Too expensive for pure hardware; used in software"
+            ],
+            [
+              "Second-Chance Clock",
+              "No (approx stack)",
+              "Extremely Rare (quasi-immune)",
+              "O(1) circular bit inspection",
+              "Industry standard in Linux / Unix kernels"
+            ]
+          ]
+        }
       },
+      {
+        "heading": "Second-Chance (Clock) and Enhanced Second-Chance Algorithms",
+        "body": "Because pure LRU requires updating a doubly linked stack or writing a 64-bit clock counter on every single memory read, real operating systems approximate LRU using the **Second-Chance (Clock)** algorithm.\n\n**Standard Second-Chance Clock:**\n- Each frame possesses a 1-bit hardware **Reference Bit ($R$)** initialized to 1 on load and set to 1 by the MMU on every reference.\n- Frames are arranged in a circular buffer with a `Clock Hand` pointing to the next victim candidate.\n- When a page replacement is needed:\n  1. Inspect the frame pointed to by the clock hand.\n  2. If $R == 0$: Select this frame as the victim, advance the hand, and return.\n  3. If $R == 1$: Clear $R = 0$ (give a \"second chance\"), advance the clock hand to the next frame, and repeat.\n  4. In the worst case (all $R == 1$), the hand sweeps all frames clearing $R \\to 0$, then evicts the original frame (degenerates gracefully to FIFO).\n\n**Enhanced Second-Chance (Clock with Dirty Bit):**\nSilberschatz details the enhanced algorithm used in macOS and modern kernels, using ordered pairs $\\langle R, M\\rangle$:\n- Class 0 $(0, 0)$: Neither recently used nor modified \u2014 **Best victim** (clean, zero I/O needed!).\n- Class 1 $(0, 1)$: Not recently used, but modified \u2014 Requires disk write before eviction.\n- Class 2 $(1, 0)$: Recently used, but clean \u2014 Likely to be used again soon.\n- Class 3 $(1, 1)$: Recently used and modified \u2014 **Worst victim** (actively used and dirty).",
+        "table": {
+          "headers": [
+            "Enhanced Class",
+            "Reference Bit (R)",
+            "Modify Bit (M)",
+            "Priority / Victim Quality",
+            "OS Action on Eviction"
+          ],
+          "rows": [
+            [
+              "Class 0",
+              "0",
+              "0",
+              "1st Choice (Best)",
+              "Immediate overwrite; no swap disk write needed"
+            ],
+            [
+              "Class 1",
+              "0",
+              "1",
+              "2nd Choice",
+              "Must schedule dirty page write-back to swap before overwriting"
+            ],
+            [
+              "Class 2",
+              "1",
+              "0",
+              "3rd Choice",
+              "Clear R to 0 on first pass; give second chance"
+            ],
+            [
+              "Class 3",
+              "1",
+              "1",
+              "4th Choice (Worst)",
+              "Clear R to 0 on first pass; keep dirty bit; give second chance"
+            ]
+          ]
+        }
+      },
+      {
+        "heading": "Verified Real FAT Results: C1 Set 2-2 Q6 (15M) & C2 Q7 (10M)",
+        "body": "Both recent VIT FAT exams featured full 4-frame page replacement comparison problems across FIFO, LRU, and OPT. Verify these benchmark numbers:",
+        "table": {
+          "headers": [
+            "Paper Source",
+            "Reference String & Frames",
+            "FIFO Results",
+            "LRU Results",
+            "OPT Results",
+            "Key Takeaway"
+          ],
+          "rows": [
+            [
+              "C1 Set 2-2 Q6 (15M)",
+              "4 frames \u00b7 25 references:\n1,2,3,4,2,1,5,2,1,6,3,2,1,4,2,5,1,2,7,1,3,2,4,1,2",
+              "**17 Faults**\n(68% fault rate, 8 hits)",
+              "**12 Faults**\n(48% fault rate, 13 hits)",
+              "**10 Faults**\n(40% fault rate, 15 hits)",
+              "LRU achieves 70% of the possible improvement from FIFO to OPT without needing future knowledge!"
+            ],
+            [
+              "C2+TC2 Q7 (10M)",
+              "4 frames \u00b7 20 references:\n1,2,3,4,2,1,5,6,2,1,2,3,7,6,3,2,1,2,3,6",
+              "**14 Faults**\n(70% fault rate, 6 hits)",
+              "**10 Faults**\n(50% fault rate, 10 hits)",
+              "**8 Faults**\n(40% fault rate, 12 hits)",
+              "OPT is 43% better than FIFO; LRU captures most of that gain."
+            ],
+            [
+              "Belady Benchmark",
+              "1,2,3,4,1,2,5,1,2,3,4,5\n(3 vs 4 frames)",
+              "3 frames: **9 Faults**\n4 frames: **10 Faults**",
+              "3 frames: 10 Faults\n4 frames: **8 Faults**",
+              "3 frames: 7 Faults\n4 frames: **6 Faults**",
+              "LRU and OPT faults strictly decrease as frames increase; FIFO suffers Belady\u2019s Anomaly."
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'OPT Tie-Breaking Rule (C1 Set 2-2 Q6)',
-      problem:
-        'Suppose 4 frames hold `{1, 2, 5, 6}` and neither `5` nor `6` ever appears again in the remaining reference string. Which page should OPT evict?',
-      solution:
-        'Both have next-use distance `∞`. By the explicit C1 Set 2-2 Q6 rule (**earliest loaded / FIFO tie-break**), evict whichever of `5` or `6` entered RAM earlier — and write that tie-break rule right above your OPT grid.',
+    "workedExample": {
+      "title": "Second-Chance (Clock) Algorithm Execution Trace",
+      "problem": "A system has 4 physical frames. Current frame state: Frame 0 holds Page 2 (R=1), Frame 1 holds Page 4 (R=0), Frame 2 holds Page 1 (R=1), Frame 3 holds Page 7 (R=1). The Clock Hand points to Frame 0. A page fault occurs for Page 5. Trace the Second-Chance Clock algorithm to identify the victim frame and show the final frame states and pointer position.",
+      "solution": "Step 1: Clock hand inspects Frame 0 (Page 2, R=1). Because R=1, it clears R=0 (gives second chance) and advances hand to Frame 1.\nStep 2: Clock hand inspects Frame 1 (Page 4, R=0). Because R=0, this frame is chosen as the VICTIM!\nStep 3: Page 4 is evicted, Page 5 is loaded into Frame 1 with R=1.\nStep 4: The clock hand advances to Frame 2.\n\nFinal State:\n- Frame 0: Page 2 (R=0)\n- Frame 1: Page 5 (R=1) [Victim was Page 4]\n- Frame 2: Page 1 (R=1)\n- Frame 3: Page 7 (R=1)\n- Clock Hand points to Frame 2."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Slot C1 Set 2-2 Q6 (15M) & Slot C2 Q7 (10M)',
-        promptSummary: 'Trace FIFO, LRU, and OPT grids for 4 frames and compare fault counts, hit ratios, and practical trade-offs.',
-        markBreakdown: 'FIFO grid (3–4M) + LRU grid (3–4M) + OPT grid (3–4M) + Comparison table & insight (1–3M)',
-        solutionSteps: [
-          'Draw a clean horizontal grid with 1 column per reference, 4 frame rows, and a bottom `H / F` row.',
-          'For hits, copy frames straight across (or leave unchanged with `H`) — NEVER count a hit as a fault, and remember LRU updates recency on hits while FIFO does NOT!',
-          'Conclude with exact Fault Count, Hit Count, Fault Rate %, and why LRU is the practical sweet spot (near-OPT without future oracle).',
+        "paperSource": "Slot C1 Set 2-2 Q6 (15M) & Slot C2 Q7 (10M)",
+        "promptSummary": "Construct 4-frame replacement grids for FIFO, LRU, and OPT across 20-25 page references, report Fault/Hit counts and rates, and contrast implementation trade-offs.",
+        "markBreakdown": "FIFO Grid + Fault Count (4M) + LRU Grid + Recency Update (4M) + OPT Grid + Tie-Break (4M) + Summary Table & Belady/Stack Analysis (3M)",
+        "solutionSteps": [
+          "Draw 3 neat horizontal grids, each having 4 rows for frames and 1 column per reference string element, plus a bottom status row (`H` or `F`).",
+          "For HITS: Copy the existing frame contents straight across without change (or leave cell blank with `H`). Remember: In LRU, a hit moves that page to the most-recently-used position; in FIFO, a hit DOES NOT change eviction order!",
+          "For OPT Tie-Breaks: If multiple resident pages never appear again in the future (next reference distance = $\\infty$), evict whichever page was loaded earliest (FIFO tie-break rule), and write this rule explicitly above your grid.",
+          "Verify memory conservation: `Faults + Hits == String Length` (e.g. `17 + 8 = 25` in C1 2-2 Q6; `14 + 6 = 20` in C2 Q7)."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-pr-1",
+        "question": "Which mathematical property guarantees that an algorithm will NEVER suffer from Belady\u2019s Anomaly?",
+        "options": [
+          "Optimal Locality Property",
+          "Stack / Inclusion Property (Bt(n) \u2286 Bt(n+1) for all t, n)",
+          "Circular FIFO Convergence",
+          "Dirty-Bit Conservation Rule"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-pr-1',
-        question: 'On a page HIT in RAM, which algorithm updates its replacement priority metadata?',
-        options: ['FIFO only', 'LRU (updates most-recently-used recency)', 'Neither FIFO nor LRU', 'FIFO moves the page to the tail'],
-        correctIndex: 1,
-        explanation: 'FIFO ignores hits (evicts strictly by load time), whereas LRU refreshes the hit page to Most Recently Used.',
+        "correctIndex": 1,
+        "explanation": "Stack algorithms satisfy the inclusion property Bt(n) \u2286 Bt(n+1), meaning that any page resident in n frames is guaranteed to be resident in n+1 frames. Thus, adding frames can never convert a hit into a miss."
       },
       {
-        id: 'sc-m4-pr-2',
-        question: 'What happens in Second-Chance (Clock) replacement when the clock hand inspects a frame with Reference bit `R = 1`?',
-        options: ['Evicts it immediately', 'Clears `R = 0`, gives it a second chance, and advances the clock hand', 'Sets Dirty bit = 1', 'Doubles its frame count'],
-        correctIndex: 1,
-        explanation: 'Clock clears `R` from 1 to 0 and moves on, evicting the first encountered frame whose `R` bit is already 0.',
+        "id": "sc-m4-pr-2",
+        "question": "When a page HIT occurs in physical RAM, how do FIFO and LRU update their replacement metadata?",
+        "options": [
+          "FIFO moves the page to the queue tail; LRU does nothing",
+          "FIFO does nothing (keeps original load time); LRU updates the hit page to Most Recently Used (MRU)",
+          "Both algorithms increment their reference counters",
+          "Both algorithms clear the valid bit"
+        ],
+        "correctIndex": 1,
+        "explanation": "FIFO is completely blind to accesses after load time (evicts strictly by entry order). LRU refreshes the recency of the hit page, protecting it from upcoming eviction."
       },
+      {
+        "id": "sc-m4-pr-3",
+        "question": "In the Enhanced Second-Chance algorithm with (Reference, Modify) bits, which class of page is the MOST preferred candidate for eviction?",
+        "options": [
+          "Class (1, 1): recently used and modified",
+          "Class (1, 0): recently used, but clean",
+          "Class (0, 1): not recently used, but modified",
+          "Class (0, 0): neither recently used nor modified"
+        ],
+        "correctIndex": 3,
+        "explanation": "Class (0, 0) pages have not been used recently and are clean. Evicting them requires zero disk I/O, making them the ideal victim candidates."
+      }
     ],
-    examTip: 'Always double-check `Faults + Hits == Length of Reference String` (`17 + 8 = 25` in C1 2-2 Q6 FIFO, `14 + 6 = 20` in C2 Q7 FIFO)!',
+    "examTip": "Always verify that Faults + Hits == Total References (e.g., 17 + 8 = 25 in C1 2-2 Q6 FIFO, 14 + 6 = 20 in C2 Q7 FIFO). Clearly mark H (Hit) vs F (Fault) below every column to make grading effortless!"
   },
   {
-    topicId: 'm4-thrashing-ws',
-    moduleId: 'm4',
-    title: 'Frame Allocation, Thrashing Curve, Working-Set Model (Δ) & Page-Fault Frequency',
-    summary:
-      'Thrashing occurs when processes lack enough frames to hold their active locality, causing paging overhead to collapse CPU utilization; the Working-Set Model and Page-Fault Frequency (PFF) prevent it.',
-    sourceDecks: ['Silberschatz 10e Ch 10 (§10.5–10.6)', 'VITC Past Papers: C1 2-2 Q3 & C1 1-2 Q6'],
-    keyPoints: [
-      'Frame allocation policies: **Equal** (`m/n`), **Proportional** (`s_i/S * m`), **Local Replacement** (isolates thrashing to one process) vs **Global Replacement** (allows one process to steal frames and trigger system-wide thrashing).',
-      '**Thrashing Feedback Loop**: low CPU utilization -> global scheduler admits MORE processes -> fewer frames per process -> massive page faults -> processes queue on swap disk -> CPU utilization plunges near 0%.',
-      '**Working-Set Model (`Δ`)**: `WSS_i` = count of distinct pages referenced in the last `Δ` references. Total demand `D = Σ WSS_i`. If **`D > m`** (total physical frames), **suspend/swap out** a process!',
-      '**Page-Fault Frequency (PFF)**: set upper & lower fault-rate bounds — above upper bound -> allocate another frame; below lower bound -> reclaim a frame.',
+    "topicId": "m4-thrashing-ws",
+    "moduleId": "m4",
+    "title": "Frame Allocation, Thrashing Dynamics, Working-Set Model (WSS(\u0394)) & Page-Fault Frequency",
+    "summary": "Thrashing occurs when processes lack enough frames to hold their active locality, causing paging overhead to collapse CPU utilization; the Working-Set Model and Page-Fault Frequency (PFF) prevent it.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 10 (\u00a710.5\u201310.6)",
+      "VITC Past Papers: C1 Set 2-2 Q3 (10M) & C1 Set 1-2 Q6 (10M)"
     ],
-    sections: [
+    "keyPoints": [
+      "Thrashing Definition: A process or system is thrashing when it spends more time paging (swapping pages between RAM and disk) than executing instructions, resulting in near-zero CPU utilization.",
+      "Thrashing Positive Feedback Loop: Insufficient frames $\\implies$ frequent page faults $\\implies$ processes blocked on disk I/O queue $\\implies$ CPU idle $\\implies$ OS CPU scheduler detects low CPU utilization and admits MORE processes $\\implies$ fewer frames per process $\\implies$ total system collapse.",
+      "Frame Allocation Policies: **Equal Allocation** ($m/n$ frames per process), **Proportional Allocation** ($f_i = \\frac{s_i}{S} \\times m$ where $s_i$ is virtual size), and **Local vs Global Replacement**.",
+      "Local vs Global Replacement: Global replacement allows a faulting process to steal frames from any process (high throughput, but enables cascading system-wide thrashing). Local replacement confines victim selection to the process\u2019s own allocated frames, isolating thrashing.",
+      "The Locality Model: Programs execute through a sequence of localities (subroutines, loops, active data structures). If a process is allocated fewer frames than the size of its current locality, it will thrash.",
+      "Working-Set Model (Peter Denning): Uses working-set parameter $\\Delta$ (window of past memory references). Working Set $WS_i(t)$ is the set of distinct pages referenced in the most recent $\\Delta$ references; Working-Set Size $WSS_i = |WS_i|$. Total demand $D = \\sum WSS_i$. If $D > m$ (total physical frames), the OS must suspend/swap out a process.",
+      "Window Size $\\Delta$ Sensitivity: If $\\Delta$ is too small, it fails to encompass the entire active locality $\\implies$ thrashing. If $\\Delta$ is too large, it encompasses multiple localities $\\implies$ over-allocation and wasted memory. If $\\Delta = \\infty$, it encompasses the entire program lifetime.",
+      "Page-Fault Frequency (PFF) Strategy: Direct dynamic frame adjustment using two thresholds: Upper Bound $U$ and Lower Bound $L$. If fault rate $> U$, allocate another frame; if fault rate $< L$, reclaim a frame."
+    ],
+    "sections": [
       {
-        heading: 'Thrashing Curve (CPU Utilization vs Degree of Multiprogramming)',
-        body: 'Draw this signature bell-like curve on every Thrashing question (C1 Set 2-2 Q3 gives 5M for underlying cause + illustrations!). CPU utilization climbs steadily until total frame demand exceeds physical RAM, at which point it falls off a cliff.',
-        diagramId: 'm4-thrashing-curve',
+        "heading": "The Thrashing Phenomenon, System Collapse Loop & Locality Model",
+        "body": "Thrashing is catastrophic for an operating system. When processes do not have enough frames to hold their active working localities, page faults occur continuously.\n\n**The Signature 6-Step Thrashing Death Spiral:**\n1. Active processes experience page faults because physical memory is over-committed.\n2. Faulting processes enter the disk waiting queue to read pages from swap space.\n3. Because most processes are waiting for disk I/O, the CPU Ready Queue empties out.\n4. CPU utilization drops precipitously toward zero.\n5. The OS CPU scheduler detects low CPU utilization and concludes the system is underloaded!\n6. To raise CPU utilization, the long-term scheduler increases the **Degree of Multiprogramming (DoM)**, admitting new processes. These new processes steal frames from existing processes, causing page faults to skyrocket further $\\implies$ the system collapses entirely.\n\n**The Locality Model:**\nPrograms exhibit temporal and spatial locality, moving through phases (e.g. initialization $\\to$ computation loop $\\to$ file output). A process requires enough physical frames to hold its current locality; allocating even one frame less than the locality size triggers thrashing.",
+        "diagramId": "m4-thrashing-curve"
       },
       {
-        heading: 'Verified FAT Benchmark: C1 Set 1-2 Q6 (Working-Set Window `Δ = 5`)',
-        body: 'Reference string (12 refs): `1, 2, 3, 2, 4, 1, 5, 2, 1, 3, 4, 5` with `Δ = 5`.',
-        table: {
-          headers: ['Sub-Part (C1 1-2 Q6)', 'Given / Window', 'Exact Answer & Reasoning'],
-          rows: [
-            ['(a) At 8th reference (`2`)', 'Last 5 refs `[2, 4, 1, 5, 2]`', 'Working Set = **`{1, 2, 4, 5}`**, `WSS = 4` frames'],
-            ['(a) At 12th reference (`5`)', 'Last 5 refs `[2, 1, 3, 4, 5]`', 'Working Set = **`{1, 2, 3, 4, 5}`**, `WSS = 5` frames'],
-            ['(b) Process needs 4, allocated 3', '`WSS (4) > allocated (3)`', 'Continuous page faults -> **Thrashing** (cannot hold current locality)'],
-            ['(c) 20 frames; 3 procs WSS = 6, 8, 7', '`D = 6 + 8 + 7 = 21 > 20`', '**Suspend/swap out 1 process** (e.g., lowest priority/smallest) and give its frames to remaining 2 so `D <= 20`'],
+        "heading": "Peter Denning\u2019s Working-Set Model (WSS(\u0394)) and Over-Commitment Policy",
+        "body": "In 1968, Peter J. Denning introduced the **Working-Set Model** based on the locality principle.\n\n**Mathematical Formalism:**\n- **Working-Set Parameter ($\\Delta$):** A fixed sliding window of the last $\\Delta$ page references (e.g. 10,000 references).\n- **Working Set ($WS_i(t)$):** The set of distinct virtual pages referenced in the most recent $\\Delta$ memory references by process $P_i$.\n- **Working-Set Size ($WSS_i(t)$):** The number of pages in the working set: $WSS_i(t) = |WS_i(t)|$.\n- **Total System Frame Demand ($D$):** The sum of working-set sizes across all active processes:\n  $$D = \\sum_{i=1}^n WSS_i(t)$$\n- Let $m$ be the total number of physical frames available in physical RAM.\n\n**Operating System Admission & Suspension Policy:**\n1. If $D \\le m$: Total demand fits within physical RAM. The system is operating normally. If $m - D$ is large, the scheduler may admit another process.\n2. If $D > m$: Total demand exceeds physical RAM! Thrashing is imminent. The OS **must suspend (swap out) one or more active processes**, release their allocated frames to the remaining processes, and prevent system collapse.",
+        "table": {
+          "headers": [
+            "Window Parameter (\u0394)",
+            "Working Set Size (WSS)",
+            "System Impact",
+            "Operational Assessment"
           ],
-        },
+          "rows": [
+            [
+              "\u0394 too small (e.g. \u0394 = 2)",
+              "Fails to cover active locality loop",
+              "High page fault rate",
+              "Under-allocation; system thrashes easily"
+            ],
+            [
+              "\u0394 optimal (e.g. \u0394 = 10,000)",
+              "Matches active subroutine/loop size",
+              "Minimal page faults; high CPU utilization",
+              "Ideal operating point"
+            ],
+            [
+              "\u0394 too large (e.g. \u0394 = 1,000,000)",
+              "Encompasses multiple historical localities",
+              "Allocates excess frames to dormant pages",
+              "Over-allocation; artificially lowers multiprogramming degree"
+            ],
+            [
+              "\u0394 -> \u221e",
+              "Encompasses all pages ever referenced",
+              "WSS = total pages in process VAS",
+              "Equivalent to allocating full process image"
+            ]
+          ]
+        }
       },
+      {
+        "heading": "Page-Fault Frequency (PFF) Dynamic Control Mechanism",
+        "body": "While the Working-Set model tracks memory reference strings (requiring timer interrupts and reference bit scanning), the **Page-Fault Frequency (PFF)** scheme provides a direct, event-driven mechanism.\n\n**PFF Operating Policy:**\nThe OS establishes two thresholds for each process:\n- **Upper Bound ($U$):** Maximum tolerable page fault rate.\n- **Lower Bound ($L$):** Minimum acceptable page fault rate.\n\n**Control Actions:**\n1. **Fault Rate $> U$ (Process is starved):** The process is experiencing too many faults, meaning its allocated frame pool is smaller than its current locality. The OS **allocates an additional frame** to this process. If no free frames exist in the system, the OS suspends a process.\n2. **Fault Rate $< L$ (Process has surplus):** The process is experiencing very few faults, meaning it has surplus frames holding inactive pages. The OS **reclaims/deallocates a frame** from this process.\n3. **$L \\le \\text{Fault Rate} \\le U$ (Stable Region):** Frame allocation remains unchanged.",
+        "table": {
+          "headers": [
+            "Criterion",
+            "Working-Set Model (WSS(\u0394))",
+            "Page-Fault Frequency (PFF)"
+          ],
+          "rows": [
+            [
+              "Primary Metric",
+              "Distinct pages in last \u0394 references",
+              "Frequency of page faults over time"
+            ],
+            [
+              "Trigger Mechanism",
+              "Continuous / periodic timer sampling",
+              "Event-driven (evaluated upon page fault)"
+            ],
+            [
+              "Overhead",
+              "Requires tracking reference history (timer interrupts)",
+              "Low overhead; invoked only when faults occur"
+            ],
+            [
+              "Thrashing Reaction",
+              "Suspends process when D = \u03a3 WSS > m",
+              "Allocates frames when rate > U; suspends if RAM empty"
+            ]
+          ]
+        }
+      },
+      {
+        "heading": "Verified FAT Masterpiece: C1 Set 1-2 Q6 Trace & Remediation",
+        "body": "Past FAT Exam Problem: Reference string (12 references): `1, 2, 3, 2, 4, 1, 5, 2, 1, 3, 4, 5` with working-set window $\\Delta = 5$.\nTrace snapshots, analyze thrashing conditions, and state exact OS remediation:",
+        "table": {
+          "headers": [
+            "Sub-Part (C1 1-2 Q6)",
+            "Window References",
+            "Calculations & Working Set",
+            "Exact Exam Answer & Analysis"
+          ],
+          "rows": [
+            [
+              "(a) Snapshot at 8th ref (2)",
+              "Last 5 refs: `[2, 4, 1, 5, 2]`",
+              "Unique pages: `{1, 2, 4, 5}`",
+              "**Working Set = {1, 2, 4, 5}**, **WSS = 4 frames**"
+            ],
+            [
+              "(a) Snapshot at 12th ref (5)",
+              "Last 5 refs: `[2, 1, 3, 4, 5]`",
+              "Unique pages: `{1, 2, 3, 4, 5}`",
+              "**Working Set = {1, 2, 3, 4, 5}**, **WSS = 5 frames**"
+            ],
+            [
+              "(b) Process requires 4 frames, but allocated 3 frames",
+              "WSS (4) > Allocated (3)",
+              "Cannot hold current locality in RAM",
+              "**Thrashing occurs**: The process will page-fault on almost every memory reference, spending all time in I/O wait."
+            ],
+            [
+              "(c) 20 physical frames; 3 procs with WSS = 6, 8, 7",
+              "D = 6 + 8 + 7 = 21 frames\nPhysical RAM m = 20 frames",
+              "D (21) > m (20) -> RAM over-committed!",
+              "**Remedy:** The OS **must suspend/swap out 1 process** (e.g. lowest priority or largest/smallest), freeing its frames so remaining 2 processes have $D \\le 20$."
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'Choosing Working-Set Window Size `Δ`',
-      problem:
-        'What goes wrong if `Δ` is chosen too small vs too large?',
-      solution:
-        'If `Δ` is **too small**, it fails to capture the entire active locality -> under-allocation & thrashing. If `Δ` is **too large**, it spans multiple past localities -> over-allocation & unnecessarily low multiprogramming degree.',
+    "workedExample": {
+      "title": "Proportional Frame Allocation & Working-Set Sizing",
+      "problem": "A system has 64 physical frames. Three processes run concurrently with virtual address space sizes S1 = 20 KB, S2 = 40 KB, and S3 = 100 KB. Compute the proportional frame allocation for each process. If their active working-set sizes are WSS1 = 10, WSS2 = 25, and WSS3 = 35, determine whether the system is thrashing and what action the OS must take.",
+      "solution": "Step 1: Compute Total Virtual Size S = 20 + 40 + 100 = 160 KB.\nStep 2: Proportional allocation formula: f_i = (s_i / S) * m\n  - Process 1: f1 = (20 / 160) * 64 = 8 frames\n  - Process 2: f2 = (40 / 160) * 64 = 16 frames\n  - Process 3: f3 = (100 / 160) * 64 = 40 frames\n  Check: 8 + 16 + 40 = 64 frames (conserved).\n\nStep 3: Evaluate Working-Set Demand:\n  D = WSS1 + WSS2 + WSS3 = 10 + 25 + 35 = 70 frames.\n  Total available physical frames m = 64 frames.\n  Since D (70) > m (64), demand exceeds capacity!\n  Notice that P1 (needs 10, has 8) and P2 (needs 25, has 16) will thrash immediately.\n\nOS Action: The OS must suspend one process (e.g. swap out P1 with WSS=10). Remaining demand D_rem = 25 + 35 = 60 <= 64. The remaining 64 frames are redistributed between P2 and P3, completely halting thrashing."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Slot C1 Set 2-2 Q3 (10M) & Slot C1 Set 1-2 Q6 (10M)',
-        promptSummary: 'C1 2-2 Q3: Thrashing cause + diagram (5M) + overcoming techniques (5M). C1 1-2 Q6: Working-set Δ=5 calculation & D>m remedy (10M).',
-        markBreakdown: 'Cause + Thrashing curve (5M) + Local replacement, Working Set, PFF, Swap-out (5M)',
-        solutionSteps: [
-          'Define thrashing (more time paging than executing) and trace the global-replacement positive feedback loop.',
-          'Sketch CPU Utilization vs Degree of Multiprogramming with the exact thrashing cliff labeled.',
-          'Detail 3 concrete fixes: (1) Local/Priority page replacement, (2) Working-Set model (`D = ΣWSS_i <= m`), (3) Page-Fault Frequency (PFF) bounds.',
+        "paperSource": "Slot C1 Set 2-2 Q3 (10M) & Slot C1 Set 1-2 Q6 (10M)",
+        "promptSummary": "C1 2-2 Q3: Thrashing cause, signature curve diagram, and 3 mitigation techniques (10M). C1 1-2 Q6: Working-Set window calculations, locality analysis, and over-commitment suspension remedy (10M).",
+        "markBreakdown": "Thrashing definition & cause loop (3M) + Thrashing curve sketch (2M) + Working-Set \u0394 trace (3M) + D > m suspension policy (2M)",
+        "solutionSteps": [
+          "Define thrashing: process spends more time paging than executing instructions.",
+          "Trace the 6-step global replacement death spiral (low CPU utilization -> scheduler admits more processes -> fewer frames -> page fault surge).",
+          "Draw the Thrashing Curve (CPU Utilization vs Degree of Multiprogramming) showing the steep cliff where demand exceeds frames.",
+          "For Working Set calculations, write the last \u0394 references explicitly in a window box, list unique page IDs, and count WSS.",
+          "For D > m, explicitly state: Suspend/swap out one process to disk to bring D <= m."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-th-1",
+        "question": "Which frame replacement scope isolates thrashing to the faulting process, preventing it from degrading healthy processes across the system?",
+        "options": [
+          "Global replacement",
+          "Local replacement",
+          "FIFO replacement",
+          "Belady replacement"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-th-1',
-        question: 'Which replacement scope prevents a thrashing process from stealing frames from healthy processes?',
-        options: ['Global replacement', 'Local replacement', 'FIFO replacement', 'Belady replacement'],
-        correctIndex: 1,
-        explanation: 'Local replacement restricts each process to evicting only from its own allocated frame pool.',
+        "correctIndex": 1,
+        "explanation": "Local page replacement restricts each process to evicting victims only from its own allocated frame pool. If a process thrashes, only its own execution slows down; other processes continue running unaffected."
       },
       {
-        id: 'sc-m4-th-2',
-        question: 'If total physical RAM has `m = 24` frames and 4 processes have `WSS = 7, 8, 6, 5`, what is `D` and the required OS action?',
-        options: ['D = 26 <= 24 (nominal)', 'D = 26 > 24 -> suspend/swap out one process to prevent thrashing', 'D = 20 -> admit two more processes', 'Switch to FCFS CPU scheduling'],
-        correctIndex: 1,
-        explanation: '`D = 7+8+6+5 = 26 > 24` exceeds physical frames -> OS must suspend a process so remaining processes fit in 24 frames.',
+        "id": "sc-m4-th-2",
+        "question": "In the Working-Set model, if total frame demand D = \u03a3 WSS_i exceeds total physical frames m (D > m), what must the operating system do?",
+        "options": [
+          "Increase the Degree of Multiprogramming by admitting more processes",
+          "Suspend / swap out one or more processes to disk until D <= m",
+          "Switch from LRU to FIFO replacement",
+          "Clear the dirty bits on all frames"
+        ],
+        "correctIndex": 1,
+        "explanation": "When D > m, physical RAM cannot accommodate the active localities of all running processes. The OS must suspend a process, freeing its frames to satisfy the working sets of remaining processes."
       },
+      {
+        "id": "sc-m4-th-3",
+        "question": "Under the Page-Fault Frequency (PFF) strategy, what action does the OS take when a process\u2019s page fault rate rises above the Upper Bound U?",
+        "options": [
+          "Reclaims a frame from the process",
+          "Allocates an additional physical frame to the process",
+          "Terminates the process immediately with SIGKILL",
+          "Lowers the CPU clock speed"
+        ],
+        "correctIndex": 1,
+        "explanation": "A page fault rate above U indicates that the process does not have enough frames to hold its active locality. The OS allocates an additional frame to stabilize its fault rate."
+      }
     ],
-    examTip: 'Always state the Locality Model (temporal + spatial locality) when explaining WHY the Working-Set model works!',
+    "examTip": "Always draw the signature Thrashing Curve with labeled axes (CPU Utilization on Y-axis, Degree of Multiprogramming on X-axis), mark the optimal operating point, and highlight the steep cliff where D > m!"
   },
   {
-    topicId: 'm4-file-directories',
-    moduleId: 'm4',
-    title: 'File Concepts, Access Methods & Directory Structures (Tree, DAG, General Graph)',
-    summary:
-      'File systems organize persistent storage via logical files, access methods (Sequential, Direct, Indexed), and hierarchical/DAG directory graphs — a major untested M4 gap across C1 and C2.',
-    sourceDecks: ['Silberschatz 10e Ch 13 (§13.1–13.3)', 'OVERDUE GAP — 0 File System Qs in C1/C2!'],
-    keyPoints: [
-      'Access Methods: **Sequential** (tape-like read/write next), **Direct/Relative** (O(1) random block `n` access for databases), **Indexed** (index table of key -> block pointer, e.g., ISAM/B+Tree).',
-      '5 Directory Structures: **Single-Level** (naming collisions), **Two-Level** (MFD + UFD per user, no grouping), **Tree-Structured** (absolute vs relative paths, no file sharing), **Acyclic-Graph / DAG** (shared files via Hard/Soft links), **General Graph** (allows cycles -> requires garbage collection / cycle detection).',
-      '**Hard Link**: directory entry pointing directly to same inode (reference count incremented; file freed only when count == 0).',
-      '**Symbolic (Soft) Link**: special file storing target pathname (can cross filesystems, leaves **dangling pointer** if target deleted).',
+    "topicId": "m4-file-directories",
+    "moduleId": "m4",
+    "title": "File Concepts, Access Methods & Directory Structures (Single-Level to General Graph)",
+    "summary": "File systems organize persistent storage via logical files, access methods (Sequential, Direct, Indexed), and hierarchical/DAG directory graphs \u2014 a major untested M4 gap across C1 and C2.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 13 (\u00a713.1\u201313.3)",
+      "OVERDUE GAP \u2014 0 File System Qs in C1/C2!"
     ],
-    sections: [
+    "keyPoints": [
+      "File Concept & Attributes: A file is a named collection of contiguous logical bytes mapped to physical storage. Attributes stored in directory/inode: Name, Identifier, Type, Location, Size, Protection, and Timestamps.",
+      "Access Methods: **Sequential Access** (tape-model: reads/writes advance pointer by 1 block; `read_next`, `write_next`), **Direct / Relative Access** (disk-model: fixed-length logical records accessible in $O(1)$ random order by block number `n`), **Indexed Access** (index table containing search keys and block pointers, e.g. ISAM / B+ Tree).",
+      "5 Directory Structures: **Single-Level** (all files in 1 directory; naming collisions across users), **Two-Level** (Master File Directory + User File Directories; isolates users but no subdirectories), **Tree-Structured** (arbitrary subdirectories; path names; no file sharing), **Acyclic-Graph (DAG)** (allows shared files/directories via Hard/Soft links; no cycles), **General Graph** (allows arbitrary links/cycles; requires cycle detection or garbage collection).",
+      "**Hard Links**: Directory entry points directly to the file's underlying inode. Reference count (`link_count`) is incremented. File data blocks are deallocated only when `link_count == 0`.",
+      "**Symbolic (Soft) Links**: A special file containing the text string of the target path. Can link across different mounted filesystems; if the target file is deleted, the symbolic link becomes a **dangling pointer**.",
+      "Directory Implementation: **Linear List** of entries ($O(n)$ search time; simple to implement) vs **Hash Table** ($O(1)$ search time; collision resolution via chaining; fixed size requires dynamic resizing)."
+    ],
+    "sections": [
       {
-        heading: 'Directory Structure Evolution (Single-Level to General Graph)',
-        body: 'Draw clean tree vs DAG diagrams showing shared files via links — remember that DAGs forbid cycles so traversal never loops infinitely.',
-        diagramId: 'm4-directory-trees',
-        table: {
-          headers: ['Structure', 'Same Filename Allowed?', 'Grouping?', 'File Sharing?', 'Key Issue'],
-          rows: [
-            ['Single-Level', 'No', 'No', 'All flat', 'Name collision across users'],
-            ['Two-Level', 'Yes (different users)', 'No', 'Hard', 'Users cannot create subfolders'],
-            ['Tree-Structured', 'Yes', 'Yes (subdirectories)', 'No', 'Duplication needed to share'],
-            ['Acyclic Graph (DAG)', 'Yes', 'Yes', 'Yes (Hard/Soft links)', 'Dangling pointers (soft) / multi-path traversal'],
-            ['General Graph', 'Yes', 'Yes', 'Yes (cycles allowed)', 'Infinite search loops; needs GC + cycle check'],
+        "heading": "Directory Structure Evolution (Single-Level to General Graph)",
+        "body": "The directory system organizes thousands to millions of files into manageable namespaces. Directory structures evolved across 5 distinct architectural generations:",
+        "diagramId": "m4-directory-trees",
+        "table": {
+          "headers": [
+            "Directory Structure",
+            "Same Filename for Users?",
+            "User Subdirectories?",
+            "File Sharing Allowed?",
+            "Primary Limitation / Failure Mode"
           ],
-        },
+          "rows": [
+            [
+              "Single-Level",
+              "No (fatal name collisions)",
+              "No (flat list)",
+              "No",
+              "Severe naming collisions; unusable for multi-user systems"
+            ],
+            [
+              "Two-Level (MFD + UFD)",
+              "Yes (different UFDs)",
+              "No (fixed 2 levels)",
+              "Hard (requires path qualification)",
+              "Users cannot organize files into subfolders"
+            ],
+            [
+              "Tree-Structured",
+              "Yes (in different folders)",
+              "Yes (arbitrary depth)",
+              "No (files strictly isolated)",
+              "File sharing requires duplicating files or manual copying"
+            ],
+            [
+              "Acyclic Graph (DAG)",
+              "Yes",
+              "Yes",
+              "Yes (via Hard / Soft links)",
+              "Requires link-count tracking; deletion creates dangling links (soft)"
+            ],
+            [
+              "General Graph",
+              "Yes",
+              "Yes",
+              "Yes (cycles permitted)",
+              "Infinite search loops during tree traversal; requires garbage collection"
+            ]
+          ]
+        }
       },
       {
-        heading: 'Directory Implementation: Linear List vs Hash Table',
-        body: '**Linear List** of `<filename, inode_ptr>` is simple to code but requires **O(n)** search time (slow for directories with 50,000 files). **Hash Table** delivers **O(1)** lookup, trading fixed size/collision handling (chaining) for speed.',
+        "heading": "Shared Files: Hard Links vs Symbolic (Soft) Links & Deletion Mechanics",
+        "body": "In an Acyclic-Graph Directory (DAG), two or more directory entries can reference the same shared file:\n\n**Hard Links (`ln target link`):**\n- Both directory entries store identical inode numbers.\n- The inode maintains a metadata field called `link_count`.\n- When a new hard link is created, `link_count` increments ($1 \\to 2$).\n- When User A deletes `fileA`, the OS merely removes the directory entry and decrements `link_count` ($2 \\to 1$). The data blocks remain completely accessible to User B.\n- Physical disk blocks are freed **only when `link_count` reaches 0**.\n- Hard links cannot cross mounted filesystem boundaries and cannot link directories (to prevent cycles).\n\n**Symbolic (Soft) Links (`ln -s target link`):**\n- Creates a distinct, independent file whose data content is simply the pathname string of the target file.\n- The target file's inode `link_count` is NOT modified.\n- If User A deletes the target file, User B's symbolic link is left pointing to a non-existent path (**Dangling Pointer**).\n- Can link across different mounted disk partitions and link directories.",
+        "table": {
+          "headers": [
+            "Feature",
+            "Hard Link",
+            "Symbolic (Soft) Link"
+          ],
+          "rows": [
+            [
+              "Target Reference",
+              "Directly to target's Inode Number",
+              "Pathname string stored in a new file"
+            ],
+            [
+              "Inode Number",
+              "Same inode number as target",
+              "Brand new, distinct inode number"
+            ],
+            [
+              "Cross Filesystems?",
+              "No (inode numbers are filesystem-specific)",
+              "Yes (pathnames work across mount points)"
+            ],
+            [
+              "Link to Directory?",
+              "Disallowed in most OSes (prevents cycles)",
+              "Allowed"
+            ],
+            [
+              "Target Deletion Effect",
+              "Data persists until link_count == 0",
+              "Becomes a dangling pointer (error on open)"
+            ]
+          ]
+        }
       },
+      {
+        "heading": "General Graph Directory Traversal & Cycle Detection",
+        "body": "When arbitrary links are permitted without acyclic validation, directory hierarchies can develop cycles (e.g. Directory A links to Subdirectory B, which links back to Directory A).\n\n**Problems Caused by Cycles:**\n1. **Infinite Search Loops:** Recursive directory searches (`find`, `ls -R`, backup utilities) loop infinitely unless they maintain a hash set of visited inode numbers.\n2. **Garbage Collection Requirement:** Simple reference counting fails to reclaim space! If a cycle of directories disconnects from the root directory, each node still has `link_count >= 1` (self-referencing), preventing deallocation. Reclaiming such orphaned cycles requires an expensive **Mark-and-Sweep Garbage Collection** traversal."
+      }
     ],
-    workedExample: {
-      title: 'Dangling Pointer vs Reference Counting on File Deletion in a DAG',
-      problem:
-        'Users A and B share file `notes.pdf` in a DAG directory. Compare what happens when User A deletes `notes.pdf` under Hard Links vs Symbolic Links.',
-      solution:
-        'Under **Hard Links**, the inode’s `link_count` decrements from `2` to `1` — the data blocks stay intact for User B until B also deletes it (`count == 0`). Under **Symbolic Links**, if A owns the real file and deletes it, B’s soft link becomes a **dangling pointer** (`No such file or directory`).',
+    "workedExample": {
+      "title": "Dangling Pointer vs Reference Counting on File Deletion in a DAG",
+      "problem": "Users Alice and Bob collaborate on research.pdf (size = 50 MB). Compare the storage overhead and deletion behavior if they share the file using: (a) Hard Links, vs (b) Symbolic Links, assuming Alice deletes the file first.",
+      "solution": "Case (a) Hard Links:\n1. Creation: Bob's directory entry points to Alice's inode. Inode link_count becomes 2. Disk storage overhead is just 1 new directory entry (no duplicate 50 MB data).\n2. Deletion: Alice deletes research.pdf. The OS removes Alice's directory entry and decrements link_count to 1. Bob continues reading and writing the 50 MB data blocks without interruption. No dangling pointer.\n\nCase (b) Symbolic Links:\n1. Creation: Bob's directory entry points to a new tiny symlink file (holding string '/home/alice/research.pdf', ~28 bytes). Link count of target remains 1.\n2. Deletion: Alice deletes research.pdf. The inode link_count drops to 0; the 50 MB data blocks are deallocated to free-space. When Bob opens his symlink, the kernel reports: 'No such file or directory' (Dangling Pointer!)."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Alpha Gap High-Probability Prompt (10M)',
-        promptSummary: 'Compare all 5 directory structures with diagrams (6M) and analyze Hard vs Soft links, dangling pointers, and cycle prevention (4M).',
-        markBreakdown: 'Diagrams (3M) + 5-structure comparison table (3M) + Hard vs Soft links & GC vs ref-count (4M)',
-        solutionSteps: [
-          'Sketch Tree vs Acyclic-Graph (two directory entries pointing to 1 shared file node) vs General Graph (cycle arrow).',
-          'Explain why reference counting fails when cycles exist in a General Graph (self-referencing cycle keeps `count >= 1` forever -> requires mark-and-sweep Garbage Collection).',
+        "paperSource": "High-Yield M4 Overdue Gap Prompt (10M)",
+        "promptSummary": "Compare all 5 directory structures with diagrams (6M) and analyze Hard vs Soft links, dangling pointers, and cycle prevention (4M).",
+        "markBreakdown": "5 directory diagrams & descriptions (5M) + Hard vs Soft link table (3M) + Cycle detection / GC explanation (2M)",
+        "solutionSteps": [
+          "Draw diagrams for Single-Level, Two-Level (MFD -> UFDs), Tree, Acyclic Graph (DAG showing 2 parents pointing to 1 child), and General Graph (showing loop arrow).",
+          "Construct the comparison table across Same Filenames, Subdirectories, Sharing, and Key Issue.",
+          "Explain Hard Links (shared inode, reference count decremented) vs Soft Links (pathname file, dangling pointer risk).",
+          "State why reference counting fails in General Graphs (self-referencing cycles maintain count >= 1, requiring mark-and-sweep garbage collection)."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-fd-1",
+        "question": "Why does simple reference counting fail to reclaim orphaned directory structures in a General Graph directory system?",
+        "options": [
+          "Inodes cannot store integer reference counts",
+          "Self-referencing cycles inside an unreachable subgraph keep link counts >= 1 forever, requiring Garbage Collection",
+          "Hard links cannot point to regular data files",
+          "Hash tables reject circular lookups"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-fd-1',
-        question: 'Why does simple reference counting fail to reclaim unreachable directories in a General Graph directory structure?',
-        options: ['Inodes cannot store integers', 'Cycles keep reference counts >= 1 even when disconnected from root, requiring Garbage Collection', 'Hard links cannot point to files', 'Hash tables forbid cycles'],
-        correctIndex: 1,
-        explanation: 'A disconnected cycle references itself, so reference counts never reach 0; garbage collection or cycle avoidance is required.',
+        "correctIndex": 1,
+        "explanation": "If two directories reference each other in a cycle and become disconnected from the root, their link counts remain at least 1, so reference counting will never free them. A mark-and-sweep garbage collector is required."
       },
       {
-        id: 'sc-m4-fd-2',
-        question: 'Which link type can cross different mounted disk partitions/filesystems?',
-        options: ['Hard Link', 'Symbolic (Soft) Link', 'Direct Inode Pointer', 'FAT entry'],
-        correctIndex: 1,
-        explanation: 'Symbolic links store a string pathname, so they can reference targets on different filesystems; hard links are bound to local inode numbers.',
-      },
+        "id": "sc-m4-fd-2",
+        "question": "Which link type can span across different mounted disk drives and file system partitions?",
+        "options": [
+          "Hard Link",
+          "Symbolic (Soft) Link",
+          "Direct Inode Pointer",
+          "Indexed FAT Entry"
+        ],
+        "correctIndex": 1,
+        "explanation": "A symbolic link stores a textual pathname string, allowing the operating system to resolve targets across any mounted filesystem. Hard links store internal inode numbers, which are valid only within a single filesystem partition."
+      }
     ],
-    examTip: 'File Systems had **ZERO** questions across C1 Set 2-2, C1 Set 1-2, and C2 — mastering Directories + File Allocation gives you a huge edge on overdue-gap papers!',
+    "examTip": "File Systems had ZERO questions across C1 Set 2-2, C1 Set 1-2, and C2! This makes Directory Structures (Tree vs DAG vs General Graph) and Unix Inode calculations the #1 highest-probability overdue gap for the upcoming exam."
   },
   {
-    topicId: 'm4-file-allocation',
-    moduleId: 'm4',
-    title: 'File Allocation Methods (Contiguous, Linked/FAT, Unix Inode) & Free-Space Management',
-    summary:
-      'Disk block allocation determines random-access speed, fragmentation, and max file size — with Unix Combined Indexed Allocation (Inode) calculations being the signature M4 file-system numerical.',
-    sourceDecks: ['Silberschatz 10e Ch 14 (§14.3–14.5)', 'OVERDUE GAP — 0 File Allocation Qs in C1/C2!'],
-    keyPoints: [
-      '**Contiguous Allocation**: directory stores `(start_block, length)` -> fastest sequential & O(1) random access, but severe **external fragmentation** and hard file growth.',
-      '**Linked Allocation**: each block stores pointer to next block -> zero external fragmentation, easy growth, but **O(n) random access** and fragile pointers. **FAT (File Allocation Table)** caches pointers in RAM for fast seeks.',
-      '**Indexed Allocation (Unix Inode)**: per-file inode holds **Direct** pointers + **Single, Double, Triple Indirect** pointers -> fast O(1) random access, zero external fragmentation, scales from tiny files to multi-terabyte files.',
-      '**Free-Space Management**: **Bit Vector (Bitmap)** (`1 bit/block`, fast contiguous search via CPU bit-scan), **Linked Free List**, **Grouping**, and **Counting** `(start, run_length)`.',
+    "topicId": "m4-file-allocation",
+    "moduleId": "m4",
+    "title": "File Allocation Methods (Contiguous, Linked/FAT, Unix Inode) & Free-Space Management",
+    "summary": "Disk block allocation determines random-access speed, fragmentation, and max file size \u2014 with Unix Combined Indexed Allocation (Inode) calculations being the signature M4 file-system numerical.",
+    "sourceDecks": [
+      "Silberschatz 10e Ch 14 (\u00a714.3\u201314.5)",
+      "OVERDUE GAP \u2014 0 File Allocation Qs in C1/C2!"
     ],
-    sections: [
+    "keyPoints": [
+      "**Contiguous Allocation**: Directory stores `(start_block, length)`. Delivers fastest sequential access (single disk seek) and $O(1)$ direct access, but suffers from severe **external fragmentation** and makes dynamic file growth difficult.",
+      "**Linked Allocation**: Each disk block stores a pointer to the next block. Eliminates external fragmentation and supports easy growth, but suffers from **$O(n)$ slow random access**, pointer overhead (4-8 bytes/block), and low reliability (1 corrupted pointer loses entire file tail).",
+      "**File Allocation Table (FAT)**: Caches all next-block pointers in a single table stored in main-memory RAM. Delivers $O(1)$ random seek time while retaining linked flexibility, but table size grows with disk size.",
+      "**Indexed Allocation (Unix Inode)**: Per-file inode contains **Direct Pointers** + **Single Indirect** + **Double Indirect** + **Triple Indirect** pointers. Delivers $O(1)$ random access, zero external fragmentation, and scales from tiny files to multi-terabyte files.",
+      "**Free-Space Management**: **Bit Vector (Bitmap)** ($1\\text{ bit/block}$; fast hardware bit-scan for contiguous runs), **Linked Free List** (zero RAM overhead, but slow random allocation), **Grouping** (first free block holds pointers to $n$ free blocks), and **Counting** (stores `(start_block, run_length)` pairs)."
+    ],
+    "sections": [
       {
-        heading: 'Contiguous vs Linked/FAT vs Unix Inode Indexed Architecture',
-        body: 'Understand the exact pointer fan-out inside a Unix inode: every indirect block holds `P = BlockSize / PointerSize` block addresses.',
-        diagramId: 'm4-file-allocation-inode',
-        table: {
-          headers: ['Method', 'External Frag?', 'Random Access', 'Reliability', 'Overhead'],
-          rows: [
-            ['Contiguous', 'Yes (severe)', 'O(1) (`start + offset`)', 'High', 'Minimal (2 fields in dir)'],
-            ['Linked', 'No', 'O(n) disk reads', 'Low (1 bad ptr breaks chain)', '4–8 bytes per data block'],
-            ['FAT (Cached Linked)', 'No', 'O(1) in RAM cache', 'Moderate (single FAT copy risk)', 'FAT table occupies RAM'],
-            ['Indexed (Unix Inode)', 'No', 'O(1) (1–4 disk reads max)', 'High', 'Index block(s) per file'],
+        "heading": "Contiguous vs Linked/FAT vs Unix Inode Indexed Architecture",
+        "body": "How an operating system allocates disk blocks to files fundamentally dictates file system performance, fragmentation, and storage reliability:",
+        "diagramId": "m4-file-allocation-inode",
+        "table": {
+          "headers": [
+            "Allocation Method",
+            "Directory Entry Content",
+            "Random Access Speed",
+            "External Frag?",
+            "File Growth & Reliability"
           ],
-        },
+          "rows": [
+            [
+              "Contiguous",
+              "`(start_block, length)`",
+              "O(1) direct calculation (`start + k`)",
+              "Yes (severe)",
+              "Difficult to grow (requires pre-allocation or file copy)"
+            ],
+            [
+              "Linked Allocation",
+              "`(start_block, end_block)`",
+              "O(n) slow (must read all preceding blocks)",
+              "No",
+              "Easy growth; low reliability (1 bad pointer loses file tail)"
+            ],
+            [
+              "FAT (Cached Linked)",
+              "`start_block` (FAT table stored in RAM)",
+              "O(1) in RAM (traverses table in memory)",
+              "No",
+              "Easy growth; table consumes significant RAM"
+            ],
+            [
+              "Indexed (Unix Inode)",
+              "Inode containing direct + indirect pointers",
+              "O(1) direct (1 to 4 block reads max)",
+              "No",
+              "Scales seamlessly from tiny 1 KB files to multi-terabyte files"
+            ]
+          ]
+        }
       },
       {
-        heading: 'Master Formula: Unix Inode Maximum File Size Calculation',
-        body: 'Memorize this clean 3-line derivation so any block size / pointer size combination takes 60 seconds in the exam.',
-        codeBlock: `Given: BlockSize = 4 KB (4096 B), PointerSize = 4 B,
-       12 Direct + 1 Single-Indirect + 1 Double-Indirect + 1 Triple-Indirect pointers.
-
-Step 1: Pointers per index block:  P = 4096 / 4 = 1024 = 2^10
-Step 2: Total addressable data blocks:
-  Direct:          12 blocks                   = 48 KB
-  Single Indirect: P     = 2^10 blocks         = 4 MB
-  Double Indirect: P^2   = 2^20 blocks         = 4 GB
-  Triple Indirect: P^3   = 2^30 blocks         = 4 TB
-Step 3: Max File Size = (12 + 2^10 + 2^20 + 2^30) * 4 KB ≈ 4.004 TB!`,
+        "heading": "Master Formula: Unix Inode Maximum File Size Derivation",
+        "body": "Unix inodes use a **Combined Indexed Allocation** hierarchy. Every indirect block stores block pointers of size $S_{\\text{ptr}}$ bytes.\n\n**Step-by-Step Derivation Formula:**\n1. Let $B$ be the Disk Block Size in bytes.\n2. Let $P$ be the number of pointers that fit inside a single index block:\n   $$P = \\frac{\\text{Block Size } B}{\\text{Pointer Size } S_{\\text{ptr}}}$$\n3. Total Addressable Data Blocks:\n   - **Direct Pointers ($D$):** Can address $D$ blocks directly.\n   - **Single Indirect ($S$):** Points to 1 index block holding $P$ data block pointers $\\implies S \\times P$ blocks.\n   - **Double Indirect ($DI$):** Points to 1 index block holding $P$ single-indirect pointers, each pointing to $P$ data blocks $\\implies DI \\times P^2$ blocks.\n   - **Triple Indirect ($TI$):** Points to 1 index block $\\implies TI \\times P^3$ blocks.\n4. **Maximum File Size Formula:**\n   $$\\text{Max File Size} = \\left( D + S \\times P + DI \\times P^2 + TI \\times P^3 \\right) \\times B$$",
+        "codeBlock": "// Standard VIT Exam Benchmark Calculation:\nGiven: BlockSize B = 4 KB = 4096 B, PointerSize = 4 B.\nPointers per Index Block: P = 4096 / 4 = 1024 = 2^10.\nGiven Inode: 12 Direct + 1 Single + 1 Double + 1 Triple Indirect.\n\nAddressable Blocks:\n  - Direct:          12 blocks                  = 48 KB\n  - Single Indirect: 1024 blocks                = 4 MB\n  - Double Indirect: 1024^2 = 1,048,576 blocks  = 4 GB\n  - Triple Indirect: 1024^3 = 1,073,741,824 blks = 4 TB\n\nMax File Size = (12 + 2^10 + 2^20 + 2^30) * 4 KB ~ 4.004 TB!"
       },
+      {
+        "heading": "Free-Space Management: Bit Vector, Linked List, Grouping & Counting",
+        "body": "The file system must track unallocated disk blocks to satisfy file creation and expansion requests efficiently:",
+        "table": {
+          "headers": [
+            "Technique",
+            "Data Structure & Mechanism",
+            "Space Overhead",
+            "Finding Contiguous Blocks",
+            "Trade-Offs"
+          ],
+          "rows": [
+            [
+              "Bit Vector (Bitmap)",
+              "1 bit per disk block (1 = free, 0 = allocated).",
+              "Minimal: $N / 8$ bytes for $N$ blocks (e.g. 32 MB for 1 TB disk with 4 KB blocks).",
+              "Fastest: CPU hardware bit-scan instructions (`find first 1`) spot contiguous runs instantly.",
+              "Table must be cached in RAM for speed; simple and widely used."
+            ],
+            [
+              "Linked Free List",
+              "Pointers inside free disk blocks link all free blocks together.",
+              "Zero RAM overhead (pointers stored in the free disk blocks themselves).",
+              "Very slow (must traverse disk to find multiple blocks).",
+              "No external fragmentation, but cannot locate contiguous blocks efficiently."
+            ],
+            [
+              "Grouping",
+              "Stores addresses of $n$ free blocks in the first free block; last pointer points to another index block.",
+              "Minimal; addresses cached in free blocks.",
+              "Fast (can allocate $n$ blocks in 1 disk read).",
+              "High performance batch allocation."
+            ],
+            [
+              "Counting",
+              "Keeps list of `(start_block, contiguous_free_count)` pairs.",
+              "Very compact if contiguous allocations/deallocations are frequent.",
+              "Fast for contiguous multi-block allocations.",
+              "Ideal for systems using contiguous file allocation."
+            ]
+          ]
+        }
+      }
     ],
-    workedExample: {
-      title: 'Free-Space Bitmap Size Calculation',
-      problem:
-        'A 1 TB (`2^40` B) disk uses 4 KB (`2^12` B) blocks. How many megabytes does a Free-Space Bit Vector require?',
-      solution:
-        'Total blocks = `2^40 / 2^12 = 2^28` blocks -> `2^28` bits = `2^25` bytes = **`32 MB`** (fits easily in modern RAM!).',
+    "workedExample": {
+      "title": "Free-Space Bitmap Size & Inode Block Access Calculation",
+      "problem": "Part A: A disk has a total capacity of 2 TB (2^41 bytes) and uses 8 KB (2^13 bytes) disk blocks. How many megabytes does a Free-Space Bit Vector require?\nPart B: In the standard 12-direct + 1-single + 1-double indirect Unix inode (BlockSize = 4 KB, Pointer = 4 B, P = 1024), how many disk accesses are required to read a byte at byte offset 5,000,000 (approx 4.76 MB)?",
+      "solution": "Part A: Bitmap Size Calculation:\n1. Total disk blocks = 2^41 / 2^13 = 2^28 blocks.\n2. Bit vector requires 1 bit per block = 2^28 bits.\n3. Convert to bytes: 2^28 bits / 8 = 2^28 / 2^3 = 2^25 bytes.\n4. Convert to megabytes: 2^25 bytes / 2^20 = 2^5 MB = **32 MB**.\n\nPart B: Inode Block Access Count:\n1. Target block index = 5,000,000 / 4096 = 1220 (offset inside file).\n2. Direct blocks span 0 to 11 (12 blocks).\n3. Single indirect spans blocks 12 to 12 + 1024 - 1 = 12 to 1035.\n4. Block 1220 falls inside the DOUBLE INDIRECT range (1036 to 1036 + 1024^2 - 1).\n5. Total disk reads required to fetch the data block:\n   - Read 1: Inode (in RAM, or 1st disk read)\n   - Read 2: Read Double-Indirect Index Block\n   - Read 3: Read Second-Level Index Block\n   - Read 4: Read the actual Data Block\n   Total disk reads = **3 disk block reads** (excluding cached inode)."
     },
-    fatQuestionMethods: [
+    "fatQuestionMethods": [
       {
-        paperSource: 'Alpha & Gamma Model High-Probability Prompt (10M)',
-        promptSummary: 'Compare Contiguous, Linked/FAT, and Indexed allocation (5M) + compute Unix Inode max file size (5M).',
-        markBreakdown: 'Diagrams & comparison table (5M) + P = BlockSize/PointerSize & Direct+P+P^2+P^3 calculation (5M)',
-        solutionSteps: [
-          'Sketch Contiguous, Linked/FAT, and Unix Inode (direct + 1x/2x/3x indirect tree) cleanly.',
-          'Compute `P = BlockSize / PointerSize` explicitly in powers of 2, then multiply each level by `BlockSize`.',
+        "paperSource": "High-Probability FAT Overdue Gap Prompt (10M)",
+        "promptSummary": "Compare Contiguous, Linked/FAT, and Unix Inode allocation (5M) and solve Inode Maximum File Size with indirect block derivation (5M).",
+        "markBreakdown": "Comparison table across random access, fragmentation, and reliability (5M) + P = BlockSize/PointerSize & (Direct + P + P^2 + P^3)*B calculation (5M)",
+        "solutionSteps": [
+          "Construct the comparison table across Contiguous, Linked, FAT, and Unix Inode.",
+          "State the pointer fanout formula: `P = BlockSize / PointerSize` in exact powers of 2.",
+          "Show the block sum: `Direct + P + P^2 + P^3`.",
+          "Multiply total blocks by `BlockSize` to compute the maximum addressable file size."
+        ]
+      }
+    ],
+    "selfChecks": [
+      {
+        "id": "sc-m4-fa-1",
+        "question": "In a Unix inode filesystem with 2 KB (2048 B) blocks and 4-byte disk pointers, how many block pointers fit in a single indirect block (P)?",
+        "options": [
+          "256 pointers",
+          "512 pointers",
+          "1024 pointers",
+          "2048 pointers"
         ],
-      },
-    ],
-    selfChecks: [
-      {
-        id: 'sc-m4-fa-1',
-        question: 'With 2 KB (`2048 B`) disk blocks and 4-byte pointers, how many pointers fit inside a single indirect block (`P`)?',
-        options: ['256', '512', '1024', '2048'],
-        correctIndex: 1,
-        explanation: '`P = 2048 / 4 = 512` block pointers per index block.',
+        "correctIndex": 1,
+        "explanation": "P = BlockSize / PointerSize = 2048 / 4 = 512 pointers per index block."
       },
       {
-        id: 'sc-m4-fa-2',
-        question: 'Which free-space management technique makes finding `n` consecutive free disk blocks fastest using hardware bit-scan instructions?',
-        options: ['Linked Free List', 'Bit Vector (Bitmap)', 'Single-Level Directory', 'Direct Access'],
-        correctIndex: 1,
-        explanation: 'A bit vector packs block availability densely (`0/1` per bit), allowing CPU word-level bit scans to spot contiguous free runs.',
-      },
+        "id": "sc-m4-fa-2",
+        "question": "Which free-space management technique allows modern CPUs to find n contiguous free blocks fastest using hardware bit-scan instructions?",
+        "options": [
+          "Linked Free List",
+          "Bit Vector (Bitmap)",
+          "Single-Level Directory",
+          "Direct Inode Allocation"
+        ],
+        "correctIndex": 1,
+        "explanation": "A bit vector packs 1 bit per block. CPUs can load 64-bit words and execute hardware bit-scan instructions (like find-first-set) to detect contiguous sequences of free blocks in nanoseconds."
+      }
     ],
-    examTip: 'Always double-check whether the problem includes **triple-indirect** or stops at **double-indirect** pointers before summing!',
-  },
+    "examTip": "Always verify whether the problem includes triple-indirect or stops at double-indirect before adding! For Unix Inode sizing, remember: P = BlockSize / PointerSize."
+  }
 ];

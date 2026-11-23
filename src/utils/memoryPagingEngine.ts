@@ -1,4 +1,4 @@
-export type PageReplacementAlgo = 'FIFO' | 'LRU' | 'OPT';
+export type PageReplacementAlgo = 'FIFO' | 'LRU' | 'OPT' | 'CLOCK' | 'SECOND_CHANCE';
 
 export interface PageStepRow {
   step: number;
@@ -6,6 +6,8 @@ export interface PageStepRow {
   frames: Array<number | null>;
   hit: boolean;
   evicted: number | null;
+  refBits?: number[];
+  clockHand?: number;
 }
 
 export interface PageReplacementResult {
@@ -67,6 +69,8 @@ export function runPageReplacement(
   const frames: Array<number | null> = Array(cap).fill(null);
   const loadedAt: number[] = Array(cap).fill(-1);
   const lastUsedAt: number[] = Array(cap).fill(-1);
+  const refBits: number[] = Array(cap).fill(0);
+  let clockHand = 0;
 
   const steps: PageStepRow[] = [];
   let faults = 0;
@@ -79,12 +83,15 @@ export function runPageReplacement(
     if (hitIdx !== -1) {
       hits += 1;
       lastUsedAt[hitIdx] = i;
+      refBits[hitIdx] = 1;
       steps.push({
         step: i + 1,
         page,
         frames: [...frames],
         hit: true,
         evicted: null,
+        refBits: [...refBits],
+        clockHand,
       });
       continue;
     }
@@ -95,12 +102,15 @@ export function runPageReplacement(
       frames[emptyIdx] = page;
       loadedAt[emptyIdx] = i;
       lastUsedAt[emptyIdx] = i;
+      refBits[emptyIdx] = 1;
       steps.push({
         step: i + 1,
         page,
         frames: [...frames],
         hit: false,
         evicted: null,
+        refBits: [...refBits],
+        clockHand,
       });
       continue;
     }
@@ -122,6 +132,16 @@ export function runPageReplacement(
           oldestUse = lastUsedAt[f];
           victimIdx = f;
         }
+      }
+    } else if (algorithm === 'CLOCK' || algorithm === 'SECOND_CHANCE') {
+      while (true) {
+        if (refBits[clockHand] === 0) {
+          victimIdx = clockHand;
+          clockHand = (clockHand + 1) % cap;
+          break;
+        }
+        refBits[clockHand] = 0;
+        clockHand = (clockHand + 1) % cap;
       }
     } else {
       // OPT with explicit C1 Set 2-2 Q6 tie-break: earliest loaded (FIFO tie-break)
@@ -151,6 +171,7 @@ export function runPageReplacement(
     frames[victimIdx] = page;
     loadedAt[victimIdx] = i;
     lastUsedAt[victimIdx] = i;
+    refBits[victimIdx] = 1;
 
     steps.push({
       step: i + 1,
@@ -158,6 +179,8 @@ export function runPageReplacement(
       frames: [...frames],
       hit: false,
       evicted,
+      refBits: [...refBits],
+      clockHand,
     });
   }
 
@@ -456,5 +479,66 @@ export function translateSegmentAddress(
     valid: true,
     physicalAddress: phys,
     message: `Valid (${offset} < ${entry.limit}): ${entry.base} + ${offset} = ${phys}`,
+  };
+}
+
+// --- Belady's Anomaly Forensic Evaluator ---
+export interface BeladyComparisonResult {
+  referenceString: number[];
+  f3: PageReplacementResult;
+  f4: PageReplacementResult;
+  isAnomaly: boolean;
+  faultDiff: number;
+  explanation: string;
+}
+
+export function evaluateBeladyAnomaly(
+  customRefs?: number[]
+): BeladyComparisonResult {
+  const refs =
+    customRefs && customRefs.length > 0
+      ? customRefs
+      : [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5];
+  const f3 = runPageReplacement(refs, 3, 'FIFO');
+  const f4 = runPageReplacement(refs, 4, 'FIFO');
+  const isAnomaly = f4.faults > f3.faults;
+  const faultDiff = f4.faults - f3.faults;
+  return {
+    referenceString: refs,
+    f3,
+    f4,
+    isAnomaly,
+    faultDiff,
+    explanation: isAnomaly
+      ? `Belady's Anomaly detected! 3 frames yielded ${f3.faults} faults, whereas 4 frames increased faults to ${f4.faults} (+${faultDiff} faults) under FIFO.`
+      : `No Belady Anomaly for this sequence under FIFO (3 frames = ${f3.faults} faults, 4 frames = ${f4.faults} faults).`,
+  };
+}
+
+// --- Demand Paging EAT Evaluator ---
+export interface DemandPagingEatInput {
+  memoryAccessNs: number;
+  pageFaultServiceMs: number;
+  pageFaultRate: number;
+}
+
+export interface DemandPagingEatResult {
+  memoryAccessNs: number;
+  pageFaultServiceNs: number;
+  pageFaultRate: number;
+  eatNs: number;
+  formula: string;
+}
+
+export function computeDemandPagingEat(input: DemandPagingEatInput): DemandPagingEatResult {
+  const pfNs = input.pageFaultServiceMs * 1_000_000;
+  const p = Math.max(0, Math.min(1, input.pageFaultRate));
+  const eatNs = Number(((1 - p) * input.memoryAccessNs + p * pfNs).toFixed(2));
+  return {
+    memoryAccessNs: input.memoryAccessNs,
+    pageFaultServiceNs: pfNs,
+    pageFaultRate: p,
+    eatNs,
+    formula: `EAT = (1 - p) × ma + p × pfTime = (1 - ${p}) × ${input.memoryAccessNs} + ${p} × ${pfNs} = ${eatNs} ns`,
   };
 }

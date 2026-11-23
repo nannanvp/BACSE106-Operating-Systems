@@ -415,3 +415,120 @@ export function runCpuSchedule(
     cpuUtilization,
   };
 }
+
+export function formatGanttSegmentLabel(seg: GanttSegment): string {
+  if (seg.kind === 'cs') {
+    return `CS[${seg.start}-${seg.end}]`;
+  }
+  return seg.label;
+}
+
+export interface ProcessTimelineStatus {
+  id: string;
+  arrival: number;
+  burst: number;
+  remainingBurst: number;
+  status: 'NOT_ARRIVED' | 'READY' | 'RUNNING' | 'COMPLETED';
+}
+
+export interface TimelineState {
+  time: number;
+  activeSegment: GanttSegment | null;
+  cpuState: 'PROCESS' | 'CS' | 'IDLE' | 'COMPLETED';
+  runningProcessId: string | null;
+  csBlockLabel: string | null;
+  processStatuses: ProcessTimelineStatus[];
+  readyQueue: string[];
+  csCountSoFar: number;
+}
+
+export function getTimelineState(
+  result: CpuScheduleResult,
+  time: number,
+  inputs: ProcessInput[]
+): TimelineState {
+  const t = Math.max(0, Math.min(result.totalTime, Math.floor(time)));
+
+  let activeSegment: GanttSegment | null = null;
+  if (t === result.totalTime && result.gantt.length > 0) {
+    activeSegment = result.gantt[result.gantt.length - 1];
+  } else {
+    activeSegment = result.gantt.find((s) => t >= s.start && t < s.end) ?? null;
+  }
+
+  let cpuState: 'PROCESS' | 'CS' | 'IDLE' | 'COMPLETED' = 'IDLE';
+  let runningProcessId: string | null = null;
+  let csBlockLabel: string | null = null;
+
+  if (t === result.totalTime && result.totalTime > 0) {
+    cpuState = 'COMPLETED';
+  } else if (activeSegment) {
+    if (activeSegment.kind === 'process') {
+      cpuState = 'PROCESS';
+      runningProcessId = activeSegment.label;
+    } else if (activeSegment.kind === 'cs') {
+      cpuState = 'CS';
+      csBlockLabel = `CS[${activeSegment.start}-${activeSegment.end}]`;
+    } else {
+      cpuState = 'IDLE';
+    }
+  }
+
+  // Calculate executed duration for each process up to time t
+  const executedTimeMap: Record<string, number> = {};
+  for (const seg of result.gantt) {
+    if (seg.kind !== 'process') continue;
+    if (seg.start >= t) continue;
+    const duration = Math.min(seg.end, t) - seg.start;
+    if (duration > 0) {
+      executedTimeMap[seg.label] = (executedTimeMap[seg.label] ?? 0) + duration;
+    }
+  }
+
+  // Count context switches started up to time t
+  let csCountSoFar = 0;
+  for (const seg of result.gantt) {
+    if (seg.kind === 'cs' && seg.start <= t) {
+      csCountSoFar += 1;
+    }
+  }
+
+  const processStatuses: ProcessTimelineStatus[] = inputs.map((p) => {
+    const executed = executedTimeMap[p.id] ?? 0;
+    const remainingBurst = Math.max(0, p.burst - executed);
+    let status: 'NOT_ARRIVED' | 'READY' | 'RUNNING' | 'COMPLETED' = 'NOT_ARRIVED';
+
+    if (t < p.arrival) {
+      status = 'NOT_ARRIVED';
+    } else if (remainingBurst === 0) {
+      status = 'COMPLETED';
+    } else if (runningProcessId === p.id && cpuState === 'PROCESS') {
+      status = 'RUNNING';
+    } else {
+      status = 'READY';
+    }
+
+    return {
+      id: p.id,
+      arrival: p.arrival,
+      burst: p.burst,
+      remainingBurst,
+      status,
+    };
+  });
+
+  const readyQueue = processStatuses
+    .filter((ps) => ps.status === 'READY')
+    .map((ps) => ps.id);
+
+  return {
+    time: t,
+    activeSegment,
+    cpuState,
+    runningProcessId,
+    csBlockLabel,
+    processStatuses,
+    readyQueue,
+    csCountSoFar,
+  };
+}

@@ -1,6 +1,6 @@
 /**
- * Contrast Solver for Acetate Division Tints (WCAG AA compliant).
- * Dynamically computes safe `--leaf-tint-alpha` so text over acetate-tinted paper
+ * Contrast Solver for Acetate Division Tints (WCAG AAA compliant >= 9.5:1).
+ * Dynamically computes safe `--leaf-tint-alpha` / `--leaf-alpha` so text over acetate-tinted paper
  * maintains >= target contrast ratio across both Light and OKLCH Dark stocks.
  */
 
@@ -29,11 +29,11 @@ export function hexToRgb(hex: string): RgbColor {
 }
 
 export function relativeLuminance({ r, g, b }: RgbColor): number {
-  const linear = [r, g, b].map((c) => {
+  const toLinear = (c: number) => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  };
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
 export function contrastRatio(c1: RgbColor, c2: RgbColor): number {
@@ -54,29 +54,60 @@ export function blendOver(fg: RgbColor, bg: RgbColor, alpha: number): RgbColor {
 }
 
 /**
+ * 12-iteration binary search solveLeafAlpha contrast solver for WCAG AAA (>=9.5:1).
  * Solves maximum acetate tint alpha in [minAlpha, maxAlpha] such that
  * `inkHex` achieves at least `targetRatio` contrast against `accentHex` blended onto `paperHex`.
  */
 export function solveLeafAlpha(
   accentHex: string,
-  paperHex: string,
-  inkHex: string,
-  targetRatio = 7.0,
-  minAlpha = 0.08,
-  maxAlpha = 0.28
+  paperHex: string = '#F4EFE4',
+  inkHex: string = '#1C1B18',
+  targetRatio: number = 9.5,
+  minAlpha: number = 0.08,
+  maxAlpha: number = 0.28
 ): number {
   const accent = hexToRgb(accentHex);
   const paper = hexToRgb(paperHex);
   const ink = hexToRgb(inkHex);
 
-  let best = minAlpha;
-  const steps = 40;
-  for (let i = 0; i <= steps; i += 1) {
-    const alpha = minAlpha + ((maxAlpha - minAlpha) * i) / steps;
-    const blended = blendOver(accent, paper, alpha);
-    if (contrastRatio(ink, blended) >= targetRatio) {
-      best = alpha;
+  const crMin = contrastRatio(ink, blendOver(accent, paper, minAlpha));
+  const crMax = contrastRatio(ink, blendOver(accent, paper, maxAlpha));
+
+  // If contrast decreases as alpha increases (typical when blending colored accent over light paper against dark ink)
+  if (crMin >= crMax) {
+    if (crMin < targetRatio) return minAlpha;
+    if (crMax >= targetRatio) return maxAlpha;
+
+    let low = minAlpha;
+    let high = maxAlpha;
+
+    for (let step = 0; step < 12; step++) {
+      const mid = (low + high) / 2;
+      const blended = blendOver(accent, paper, mid);
+      if (contrastRatio(ink, blended) >= targetRatio) {
+        low = mid;
+      } else {
+        high = mid;
+      }
     }
+    return Number(low.toFixed(3));
+  } else {
+    // If contrast increases as alpha increases
+    if (crMax < targetRatio) return minAlpha;
+    if (crMin >= targetRatio) return maxAlpha;
+
+    let low = minAlpha;
+    let high = maxAlpha;
+
+    for (let step = 0; step < 12; step++) {
+      const mid = (low + high) / 2;
+      const blended = blendOver(accent, paper, mid);
+      if (contrastRatio(ink, blended) >= targetRatio) {
+        high = mid;
+      } else {
+        low = mid;
+      }
+    }
+    return Number(high.toFixed(3));
   }
-  return Number(best.toFixed(3));
 }

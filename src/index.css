@@ -1,106 +1,213 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ============================================================================
-   BACSE106 Operating Systems — Technical Reference Manual Design Tokens
-   Aesthetic: rw-manual-acetate-tab-board (Late-1980s Boxed Reference Binder)
-   ============================================================================ */
-:root {
-  --font-display: 'Archivo', system-ui, -apple-system, sans-serif;
-  --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* Light Physical Stock Palette */
-  --bg-desk: #26231e;
-  --bg-board: #eae4d7;
-  --bg-sheet: #f4efe4;
-  --bg-paper: #faf7f0;
-  --bg-recessed: #e2dbcc;
-
-  --ink-primary: #1c1b18;
-  --ink-secondary: #434038;
-  --ink-muted: #6e695d;
-  --rule-hairline: #c5beb0;
-  --rule-strong: #9c9484;
-
-  /* Acetate Division Colors */
-  --div-m1: #e5b82e;
-  --div-m2: #e06d2b;
-  --div-m3: #4f8a3d;
-  --div-m4: #147e7b;
-  --div-m5: #22559c;
-  --div-labs: #8b3a62;
-  --div-mock: #3b4d7a;
-  --div-standing: #2e6f5e;
-  --div-danger: #b83227;
-
-  /* Runtime contrast-solved acetate alpha (updated by solveLeafAlpha) */
-  --leaf-tint-alpha: 0.14;
-  --active-accent: #2e6f5e;
+@theme {
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "EB Garamond", Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.dark {
-  /* OKLCH Warm-Obsidian Dark Ladder (Hue 72 deg — zero CSS invert hacks) */
-  --bg-desk: oklch(0.13 0.008 72);
-  --bg-board: oklch(0.175 0.009 72);
-  --bg-sheet: oklch(0.205 0.010 72);
-  --bg-paper: oklch(0.24 0.011 72);
-  --bg-recessed: oklch(0.16 0.008 72);
+:root {
+  /* ============================================================================
+     rw-manual-acetate-tab-board palette tokens
+     Late-1980s Boxed Software Reference Manual
+     ============================================================================ */
 
-  --ink-primary: oklch(0.935 0.012 78);
-  --ink-secondary: oklch(0.79 0.012 76);
-  --ink-muted: oklch(0.64 0.011 74);
-  --rule-hairline: oklch(0.32 0.012 72);
-  --rule-strong: oklch(0.44 0.014 72);
+  /* Exact Color Surfaces */
+  --surface-binder: #26231E;
+  --surface-board: #EAE4D7;
+  --surface-leaf: #F4EFE4;
+  --surface-sheet: #FAF7F0;
+  --surface-well: #E2DBCC;
 
-  /* Calibrated Acetate Luminance for Dark Stock */
-  --div-m1: #f0c94f;
-  --div-m2: #ef8347;
-  --div-m3: #6cb057;
-  --div-m4: #2ca5a1;
-  --div-m5: #4f85d1;
-  --div-labs: #c46493;
-  --div-mock: #6e85bd;
-  --div-standing: #4ca38c;
-  --div-danger: #e2584c;
+  /* Aliases for backwards compatibility with Intermediate components */
+  --bg-desk: var(--surface-binder);
+  --bg-board: var(--surface-board);
+  --bg-sheet: var(--surface-leaf);
+  --bg-paper: var(--surface-sheet);
+  --bg-recessed: var(--surface-well);
+
+  /* Exact Inks */
+  --ink-primary: #1C1B18;
+  --ink-secondary: #434038;
+  --ink-muted: #6E695D;
+
+  /* Rules */
+  --rule-hairline: #C5BEB0;
+  --rule-heavy: #1C1B18;
+  --rule-strong: #1C1B18;
+
+  /* 7-Division Tab Wheel */
+  --tab-yellow: #E5B82E;
+  --tab-orange: #E06D2B;
+  --tab-green: #4F8A3D;
+  --tab-teal: #147E7B;
+  --tab-ultramarine: #22559C;
+  --tab-violet: #6F539B;
+  --tab-sienna: #854D2B;
+
+  /* Division tokens */
+  --div-m1: #E5B82E;
+  --div-m2: #E06D2B;
+  --div-m3: #4F8A3D;
+  --div-m4: #147E7B;
+  --div-m5: #22559C;
+  --div-labs: #6F539B;
+  --div-mock: #854D2B;
+  --div-standing: #2E6F5E;
+  --div-danger: #A62B2B;
+
+  /* Dynamic runtime tokens solved per division */
+  --division-accent: #E5B82E;
+  --division-ink: #1C1B18;
+  --leaf-alpha: 0.92;
+  --leaf-tint-alpha: 0.14;
+  --active-accent: #2E6F5E;
+}
+
+html.dark, .dark {
+  color-scheme: dark;
+
+  /* Impeccable OKLCH warm-tinted obsidian elevation ladder (H ≈ 72°, low chroma ≤ 0.011) */
+  --surface-binder: oklch(15.5% 0.007 72);
+  --surface-board: oklch(19% 0.008 72);
+  --surface-sheet: oklch(23% 0.009 72);
+  --surface-leaf: oklch(26.5% 0.010 72);
+  --surface-well: oklch(15% 0.007 70);
+  --surface-overlay: oklch(24% 0.009 72 / 0.86);
+
+  --bg-desk: var(--surface-binder);
+  --bg-board: var(--surface-board);
+  --bg-sheet: var(--surface-leaf);
+  --bg-paper: var(--surface-sheet);
+  --bg-recessed: var(--surface-well);
+
+  /* Intentional warm off-white ink ramp (no pure #FFFFFF glare, all ≥ 4.5:1 WCAG AA) */
+  --ink-primary: oklch(91% 0.010 80);
+  --ink-secondary: oklch(76% 0.012 78);
+  --ink-muted: oklch(62% 0.012 76);
+
+  /* Quiet hairline structure */
+  --rule-hairline: oklch(30% 0.009 72);
+  --rule-heavy: oklch(37% 0.010 72);
+  --rule-strong: oklch(37% 0.010 72);
+
+  /* Desaturated tab accents for dark canvas legibility */
+  --tab-yellow: oklch(78% 0.125 84);
+  --tab-orange: #EF8347;
+  --tab-green: #6CB057;
+  --tab-teal: #2CA5A1;
+  --tab-ultramarine: #4F85D1;
+  --tab-violet: #8C70B8;
+  --tab-sienna: #A3653B;
+
+  --div-m1: #E5B82E;
+  --div-m2: #E06D2B;
+  --div-m3: #4F8A3D;
+  --div-m4: #147E7B;
+  --div-m5: #22559C;
+  --div-labs: #6F539B;
+  --div-mock: #854D2B;
+  --div-standing: #4CA38C;
+  --div-danger: #E2584C;
+
+  --accent-brass: oklch(78% 0.125 84);
+  --accent-brass-hover: oklch(73% 0.125 84);
+  --accent-plum-fill: oklch(49% 0.13 302);
+  --accent-plum-ink: oklch(79% 0.105 302);
+  --accent-blue-ink: oklch(75% 0.105 248);
+  --accent-green-ink: oklch(75% 0.115 148);
+  --accent-red-ink: oklch(71% 0.135 24);
+  --accent-amber-ink: oklch(79% 0.11 76);
 
   --leaf-tint-alpha: 0.2;
 }
 
 @layer base {
   html {
-    background-color: var(--bg-desk);
+    font-family: var(--font-sans);
     color: var(--ink-primary);
-    font-family: var(--font-display);
+    background-color: var(--surface-board);
+    scroll-behavior: smooth;
+    caret-color: var(--tab-orange);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background-color: var(--bg-desk);
+    background-color: var(--surface-binder);
     color: var(--ink-primary);
     overflow-x: clip;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  ::selection {
+    background-color: var(--tab-yellow);
+    color: var(--ink-primary);
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
   }
 
   code, pre, kbd, samp {
     font-family: var(--font-mono);
   }
+
+  /* Custom themed scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--surface-board);
+    border-left: 1px solid var(--rule-hairline);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #ACA596;
+    border: 2px solid var(--surface-board);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-secondary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-/* Editorial Reference Prose */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Editorial prose reading measure in Sabon/Garamond manual style */
 .prose-manual {
   font-family: var(--font-serif);
-  font-size: 1.09rem;
-  line-height: 1.68;
+  font-size: 1.08rem;
+  line-height: 1.65;
+  max-width: 68ch;
   color: var(--ink-primary);
+}
+
+.prose-measure {
+  max-width: 72ch;
 }
 
 .prose-manual strong {
@@ -111,19 +218,21 @@
 .prose-manual code {
   font-family: var(--font-mono);
   font-size: 0.85em;
-  background-color: var(--bg-recessed);
+  background-color: var(--surface-well);
   padding: 0.1rem 0.32rem;
   border-radius: 2px;
   border: 1px solid var(--rule-hairline);
 }
 
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+/* Two-frame 90ms hinged step transition per rw-manual-acetate-tab-board */
+.step-hinge {
+  transition-timing-function: steps(2, end);
+  transition-duration: 90ms;
 }
 
 /* Physical Binder Mechanics */
 .binder-spine {
-  background-color: var(--bg-board);
+  background-color: var(--surface-board);
   border-right: 1px solid var(--rule-hairline);
   background-image: linear-gradient(
     to right,
@@ -134,21 +243,20 @@
   );
 }
 
+/* Punched binder hole motif on wide desktop manual margin */
 .binder-hole {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 9999px;
-  background-color: var(--bg-desk);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.55),
-    0 1px 0 rgba(255, 255, 255, 0.14);
-  border: 1px solid var(--rule-strong);
+  background-color: #D2CBB9;
+  border: 1px solid #B5AEA0;
+  box-shadow: inset 1px 2px 3px rgba(28, 27, 24, 0.22);
 }
 
-.step-hinge {
-  position: relative;
-  border-top: 2px solid var(--rule-strong);
-  border-bottom: 1px solid var(--rule-hairline);
+html.dark .binder-hole {
+  background-color: oklch(14% 0.006 72);
+  border-color: var(--rule-hairline);
+  box-shadow: inset 1px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .fore-edge-tab {
@@ -159,7 +267,7 @@
 
 /* Dark-Mode-Safe Vector SVG Plate */
 .diagram-canvas-plate {
-  background-color: var(--bg-paper);
+  background-color: var(--surface-sheet);
   border: 1px solid var(--rule-hairline);
   border-radius: 2px;
   color: var(--ink-primary);
@@ -169,15 +277,100 @@
   font-family: var(--font-mono);
 }
 
-/* Highlight mark for syllabus deep search */
+/* Highlight mark for deep search */
 mark.manual-mark {
-  background-color: color-mix(in srgb, var(--div-m1) 42%, transparent);
+  background-color: color-mix(in srgb, var(--tab-yellow) 42%, transparent);
   color: var(--ink-primary);
   padding: 0 2px;
   border-radius: 2px;
 }
 
-/* Compositor-only Mastery Confetti */
+/* Compositor-only Mastery Confetti & Reinforcement Motion */
+@keyframes mastery-confetti-arc {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+    transform: translate3d(
+        calc(var(--confetti-mid-x, 20px) * 0.45),
+        calc(var(--confetti-mid-y, -30px) * 0.55),
+        0
+      )
+      scale(1.05)
+      rotate(calc(var(--confetti-rot, 45deg) * 0.25));
+  }
+  42% {
+    opacity: 1;
+    transform: translate3d(var(--confetti-mid-x, 20px), var(--confetti-mid-y, -30px), 0)
+      scale(1)
+      rotate(calc(var(--confetti-rot, 45deg) * 0.58));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-end-x, 40px), var(--confetti-end-y, 60px), 0)
+      scale(0.6)
+      rotate(var(--confetti-rot, 90deg));
+  }
+}
+
+@keyframes mastery-ring-expand {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.65);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.15);
+  }
+}
+
+@keyframes mastery-check-pop {
+  0% {
+    transform: scale(0.88);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes mastery-toast-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.mastery-confetti-piece {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-name: mastery-confetti-arc;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: forwards;
+}
+
+.mastery-ring-pulse {
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: mastery-ring-expand 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mastery-check-pop {
+  animation: mastery-check-pop 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mastery-toast-enter {
+  animation: mastery-toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes confetti-fall {
   0% {
     opacity: 1;
@@ -196,23 +389,226 @@ mark.manual-mark {
   animation: confetti-fall var(--dur, 900ms) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
-/* Reduced Motion Support */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Optical compensation for light-on-dark typography */
+html.dark body {
+  letter-spacing: 0.008em;
 }
 
-/* Print Layout */
+html.dark ::-webkit-scrollbar-thumb {
+  background: oklch(33% 0.010 72);
+  border: 2px solid var(--surface-board);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(43% 0.011 72);
+}
+
+/* Progressive Lightness Surface Elevation in Dark Mode */
+html.dark .bg-\[\#EAE4D7\],
+html.dark .bg-\[\#EAE4D7\]\/95,
+html.dark .bg-\[\#EAE4D7\]\/60,
+html.dark .bg-\[\#EAE4D7\]\/55,
+html.dark .bg-\[\#E5DEC9\]\/60,
+html.dark .bg-\[\#E5DEC9\]\/70,
+html.dark .bg-\[\#ded6c6\] {
+  background-color: var(--surface-board);
+}
+
+html.dark .bg-\[\#FAF7F0\],
+html.dark .bg-\[\#FFFFFF\],
+html.dark .bg-white {
+  background-color: var(--surface-sheet);
+}
+
+html.dark .bg-\[\#F4EFE4\],
+html.dark .bg-\[\#F4EFE4\]\/60 {
+  background-color: var(--surface-leaf);
+}
+
+/* Elevated stone-charcoal secondary action buttons */
+html.dark .bg-\[\#1C1B18\] {
+  background-color: oklch(30% 0.010 72);
+}
+
+/* Recessed warm-obsidian code / schema wells */
+html.dark main .bg-\[\#26231E\],
+html.dark pre,
+html.dark .code-block-surface {
+  background-color: var(--surface-well);
+  color: var(--ink-primary);
+  border-color: var(--rule-hairline);
+}
+
+html.dark code:not(pre code) {
+  background-color: var(--surface-well);
+  color: var(--ink-primary);
+  border-color: var(--rule-hairline);
+}
+
+html.dark .bg-\[\#FFF3F3\] {
+  background-color: oklch(26% 0.045 24);
+}
+
+/* Warm off-white ink hierarchy */
+html.dark .text-\[\#1C1B18\],
+html.dark .text-\[\#1C1B18\]\/85,
+html.dark .text-\[\#2C2A25\],
+html.dark .text-slate-800 {
+  color: var(--ink-primary);
+}
+
+html.dark .text-\[\#434038\] {
+  color: var(--ink-secondary);
+}
+
+html.dark .text-\[\#6E695D\] {
+  color: var(--ink-muted);
+}
+
+/* Desaturated WCAG-AA semantic inks */
+html.dark .text-\[\#6B21A8\] {
+  color: var(--accent-plum-ink);
+}
+
+html.dark .text-\[\#22559C\] {
+  color: var(--accent-blue-ink);
+}
+
+html.dark .text-\[\#4F8A3D\],
+html.dark .text-\[\#2E5C22\] {
+  color: var(--accent-green-ink);
+}
+
+html.dark .text-\[\#A62B2B\] {
+  color: var(--accent-red-ink);
+}
+
+html.dark .text-\[\#854D2B\] {
+  color: var(--accent-amber-ink);
+}
+
+/* Quiet hairline borders & dividers */
+html.dark .border-\[\#1C1B18\],
+html.dark .border-\[\#1C1B18\]\/70,
+html.dark .border-\[\#1C1B18\]\/60,
+html.dark .border-\[\#1C1B18\]\/40,
+html.dark .border-\[\#1C1B18\]\/30,
+html.dark .border-\[\#1C1B18\]\/25,
+html.dark .border-\[\#1C1B18\]\/20,
+html.dark .border-\[\#1C1B18\]\/15,
+html.dark .border-\[\#C5BEB0\],
+html.dark .border-\[\#EAE4D7\],
+html.dark .border-slate-200 {
+  border-color: var(--rule-hairline);
+}
+
+html.dark .divide-\[\#1C1B18\] > :not(:last-child),
+html.dark .divide-\[\#C5BEB0\] > :not(:last-child) {
+  border-color: var(--rule-hairline);
+}
+
+/* Calm hover elevation */
+html.dark .hover\:bg-\[\#EAE4D7\]:hover,
+html.dark .hover\:bg-\[\#F4EFE4\]:hover,
+html.dark .hover\:bg-\[\#FAF7F0\]:hover {
+  background-color: oklch(30% 0.011 72);
+}
+
+html.dark .hover\:bg-\[\#2C2A25\]:hover {
+  background-color: oklch(35% 0.011 72);
+}
+
+/* Recessed form inputs / selects / textareas */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: var(--surface-well);
+  color: var(--ink-primary);
+  border-color: var(--rule-heavy);
+}
+
+/* Desaturated primary brass-yellow & standing-plum fills */
+html.dark .bg-\[\#E5B82E\] {
+  background-color: var(--accent-brass);
+  color: oklch(17% 0.008 72);
+}
+
+html.dark .hover\:bg-\[\#d8aa22\]:hover,
+html.dark .hover\:bg-\[\#d8ab22\]:hover,
+html.dark .hover\:bg-\[\#d6a920\]:hover {
+  background-color: var(--accent-brass-hover);
+}
+
+/* Preserve dark high-contrast ink on warm yellow/orange DIVISION_WHEEL surfaces */
+html.dark .bg-\[\#E5B82E\] .text-\[\#1C1B18\],
+html.dark .bg-\[\#E5B82E\] .text-\[\#434038\],
+html.dark .bg-\[\#E06D2B\],
+html.dark .bg-\[\#E06D2B\] .text-\[\#1C1B18\],
+html.dark .bg-\[\#E06D2B\] .text-\[\#434038\],
+html.dark .bg-\[\#d8aa22\],
+html.dark .bg-\[\#d8ab22\],
+html.dark .bg-\[\#d6a920\],
+html.dark [style*="background-color: rgb(229, 184, 46)"],
+html.dark [style*="background-color: rgb(229, 184, 46)"] .text-\[\#1C1B18\],
+html.dark [style*="background-color: rgb(224, 109, 43)"],
+html.dark [style*="background-color: rgb(224, 109, 43)"] .text-\[\#1C1B18\] {
+  color: oklch(17% 0.008 72);
+}
+
+/* Gently temper DIVISION_WHEEL chroma on dark canvas so tabs & module banners stay refined */
+html.dark .fore-edge-tab,
+html.dark .module-accent-bar {
+  filter: saturate(0.84) brightness(0.92);
+}
+
+/* Keep crisp warm-white text on deeper DIVISION_WHEEL headers */
+html.dark .bg-\[\#4F8A3D\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#147E7B\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#22559C\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#6F539B\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#854D2B\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#6B21A8\] .text-\[\#FAF7F0\],
+html.dark .bg-\[\#A62B2B\] .text-\[\#FAF7F0\] {
+  color: oklch(95% 0.008 80);
+}
+
+/* Technical textbook SVG diagrams crisp on subtle muted paper plate inside dark mode */
+html.dark .diagram-canvas-plate {
+  background-color: oklch(92% 0.012 82);
+  color: #1C1B18;
+}
+
+/* Clean Printable Formula Cheat Sheet & Exam Sheet Stylesheet */
 @media print {
+  @page {
+    margin: 12mm;
+  }
+
+  html,
   body {
     background: #ffffff !important;
-    color: #111111 !important;
+    color: #000000 !important;
+    font-size: 11pt;
   }
+
+  header,
+  nav,
+  aside,
+  footer,
   .no-print {
     display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .print-card {
+    background: #ffffff !important;
+    border: 1px solid #1C1B18 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

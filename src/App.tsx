@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
   BookOpen,
   CalendarClock,
   ClipboardCheck,
   Compass,
   FileCheck2,
   FlaskConical,
+  Gauge,
   Layers,
   Moon,
   Sigma,
@@ -47,8 +47,8 @@ import {
   recordWeakTopicMiss,
 } from './utils/weakTopicsEngine';
 
-type AppView = 'standing' | 'sprint' | 'syllabus' | 'reference' | 'prediction' | 'labs' | 'mock';
-type ModuleId = 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
+export type AppView = 'standing' | 'sprint' | 'syllabus' | 'reference' | 'prediction' | 'labs' | 'mock';
+export type ModuleId = 'm1' | 'm2' | 'm3' | 'm4' | 'm5';
 
 const KEYS = {
   activeView: 'bacse106_active_view_v1',
@@ -82,14 +82,20 @@ function saveJson(key: string, value: unknown): void {
   }
 }
 
-const NAV_ITEMS: Array<{ id: AppView; label: string; icon: React.FC<{ className?: string }> }> = [
-  { id: 'standing', label: 'Standing', icon: ClipboardCheck },
+const NAV_ITEMS: Array<{
+  id: AppView;
+  label: string;
+  isStanding?: boolean;
+  isMock?: boolean;
+  icon: React.FC<{ className?: string }>;
+}> = [
+  { id: 'standing', label: 'Standing', isStanding: true, icon: Gauge },
   { id: 'sprint', label: 'Sprint', icon: CalendarClock },
   { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
   { id: 'reference', label: 'Reference', icon: Layers },
   { id: 'prediction', label: 'Prediction', icon: Compass },
   { id: 'labs', label: 'OS Labs', icon: FlaskConical },
-  { id: 'mock', label: 'FAT Mock', icon: FileCheck2 },
+  { id: 'mock', label: 'FAT Mock', isMock: true, icon: FileCheck2 },
 ];
 
 export default function App() {
@@ -158,6 +164,35 @@ export default function App() {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (event: MediaQueryListEvent) => {
+      try {
+        const stored = localStorage.getItem(DARK_MODE_STORAGE_KEY);
+        if (!stored) {
+          setDarkMode(event.matches);
+        }
+      } catch {
+        setDarkMode(event.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, []);
+
+  const handleToggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(DARK_MODE_STORAGE_KEY, next ? 'dark' : 'light');
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   // Persist all user state
   useEffect(() => saveJson(KEYS.activeView, activeView), [activeView]);
   useEffect(() => saveJson(KEYS.activeModule, activeModuleId), [activeModuleId]);
@@ -171,7 +206,12 @@ export default function App() {
   useEffect(() => saveJson(KEYS.rubricScores, rubricScores), [rubricScores]);
   useEffect(() => saveJson(KEYS.weakTopics, weakTopicsMap), [weakTopicsMap]);
 
-  // Runtime contrast-solved acetate alpha (--leaf-tint-alpha & --active-accent)
+  // Scroll to top on view changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeView]);
+
+  // Runtime contrast-solved acetate alpha & active division accent
   useEffect(() => {
     const wheelKey =
       activeView === 'syllabus'
@@ -190,6 +230,8 @@ export default function App() {
     const alpha = solveLeafAlpha(accentHex, baseSheetHex, inkHex, 7.0, 0.08, darkMode ? 0.22 : 0.16);
     document.documentElement.style.setProperty('--leaf-tint-alpha', String(alpha));
     document.documentElement.style.setProperty('--active-accent', accentHex);
+    document.documentElement.style.setProperty('--division-accent', accentHex);
+    document.documentElement.style.setProperty('--leaf-alpha', String(alpha));
   }, [activeView, activeModuleId, darkMode]);
 
   // Global Ctrl+K / Cmd+K Formula Quick-Reference Drawer
@@ -303,293 +345,492 @@ export default function App() {
     [srsProfile]
   );
 
+  const isFullWidthSyllabus = activeView === 'syllabus';
+  const containerClass = isFullWidthSyllabus
+    ? 'w-full px-4 sm:px-7 lg:px-9'
+    : 'w-full max-w-7xl mx-auto px-4 sm:px-6';
+
+  // 7-Division Fore-Edge Tab Rail with proportional tab heights scaled to module lecture hours
+  // M1: 6h (h-20 = 80px), M2: 10h (h-32 = 128px), M3: 10h (h-32 = 128px), M4: 10h (h-32 = 128px), M5: 9h (h-28 = 112px), LABS: h-20, MOCK: h-20
+  const foreEdgeTabs = useMemo(
+    () => [
+      {
+        id: 'm1',
+        label: 'M1 · 6H',
+        hex: '#E5B82E',
+        darkHex: '#F0C94F',
+        lightText: false,
+        heightClass: 'h-20',
+        isActive: (activeView === 'syllabus' || activeView === 'reference') && activeModuleId === 'm1',
+        onClick: () => {
+          setActiveModuleId('m1');
+          setFocusedTopicId(null);
+          if (activeView !== 'reference') setActiveView('syllabus');
+        },
+      },
+      {
+        id: 'm2',
+        label: 'M2 · 10H',
+        hex: '#E06D2B',
+        darkHex: '#EF8347',
+        lightText: false,
+        heightClass: 'h-32',
+        isActive: (activeView === 'syllabus' || activeView === 'reference') && activeModuleId === 'm2',
+        onClick: () => {
+          setActiveModuleId('m2');
+          setFocusedTopicId(null);
+          if (activeView !== 'reference') setActiveView('syllabus');
+        },
+      },
+      {
+        id: 'm3',
+        label: 'M3 · 10H',
+        hex: '#4F8A3D',
+        darkHex: '#6CB057',
+        lightText: true,
+        heightClass: 'h-32',
+        isActive: (activeView === 'syllabus' || activeView === 'reference') && activeModuleId === 'm3',
+        onClick: () => {
+          setActiveModuleId('m3');
+          setFocusedTopicId(null);
+          if (activeView !== 'reference') setActiveView('syllabus');
+        },
+      },
+      {
+        id: 'm4',
+        label: 'M4 · 10H',
+        hex: '#147E7B',
+        darkHex: '#2CA5A1',
+        lightText: true,
+        heightClass: 'h-32',
+        isActive: (activeView === 'syllabus' || activeView === 'reference') && activeModuleId === 'm4',
+        onClick: () => {
+          setActiveModuleId('m4');
+          setFocusedTopicId(null);
+          if (activeView !== 'reference') setActiveView('syllabus');
+        },
+      },
+      {
+        id: 'm5',
+        label: 'M5 · 9H',
+        hex: '#22559C',
+        darkHex: '#4F85D1',
+        lightText: true,
+        heightClass: 'h-28',
+        isActive: (activeView === 'syllabus' || activeView === 'reference') && activeModuleId === 'm5',
+        onClick: () => {
+          setActiveModuleId('m5');
+          setFocusedTopicId(null);
+          if (activeView !== 'reference') setActiveView('syllabus');
+        },
+      },
+      {
+        id: 'labs',
+        label: 'LABS',
+        hex: '#6F539B',
+        darkHex: '#C46493',
+        lightText: true,
+        heightClass: 'h-20',
+        isActive: activeView === 'labs',
+        onClick: () => setActiveView('labs'),
+      },
+      {
+        id: 'mock',
+        label: '100M FAT',
+        hex: '#854D2B',
+        darkHex: '#6E85BD',
+        lightText: true,
+        heightClass: 'h-20',
+        isActive: activeView === 'mock',
+        onClick: () => setActiveView('mock'),
+      },
+    ],
+    [activeView, activeModuleId]
+  );
+
+  const activeAccentEntry = useMemo(() => {
+    const wheelKey =
+      activeView === 'syllabus'
+        ? activeModuleId
+        : activeView === 'labs'
+          ? 'labs'
+          : activeView === 'mock'
+            ? 'mock'
+            : activeView === 'standing'
+              ? 'standing'
+              : activeModuleId;
+    return DIVISION_WHEEL[wheelKey] ?? DIVISION_WHEEL.standing;
+  }, [activeView, activeModuleId]);
+
+  const activeAccentHex = darkMode ? activeAccentEntry.darkHex : activeAccentEntry.hex;
+
   return (
-    <div className="min-h-screen bg-[var(--bg-desk)] text-[var(--ink-primary)] flex flex-col">
+    <div className="min-h-screen bg-[#26231E] dark:bg-[#100F0D] text-[#1C1B18] dark:text-[#E6E2DA] p-0 xl:p-3 transition-colors duration-200 flex justify-center">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-1.5 focus:bg-[var(--ink-primary)] focus:text-[var(--bg-paper)] focus:rounded-[2px]"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2.5 focus:left-4 focus:z-50 focus:px-3.5 focus:py-2 focus:bg-[#E5B82E] focus:text-[#1C1B18] focus:border focus:border-[#1C1B18] focus:text-xs focus:font-mono focus:font-semibold focus:rounded-[4px]"
       >
-        Skip to content
+        Skip to main content
       </a>
 
-      {/* Strict 3-Zone Sticky Header */}
-      <header className="sticky top-0 z-40 bg-[var(--bg-board)] border-b border-[var(--rule-strong)] no-print">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-3">
-          {/* Zone 1: Brand */}
-          <button
-            type="button"
-            onClick={() => handleNavigateView('standing')}
-            className="flex items-center gap-2.5 text-left shrink-0"
+      {/* Centered Archival Reference Manual Shell Assembly (max-w-[1600px]) */}
+      <div className="w-full max-w-[1600px] flex min-w-0 min-h-screen xl:min-h-0">
+        {/* Open Manual Section Board */}
+        <div className="flex-1 flex bg-[#EAE4D7] dark:bg-[#171613] border border-[#1C1B18] dark:border-[#312E29] rounded-none xl:rounded-l-[6px] min-w-0 transition-colors duration-200">
+          {/* Left Punched Ring-Binder Spine Margin (3 Circular Punches + Vertical Rotated Folio Stamp) */}
+          <aside
+            aria-hidden="true"
+            className="hidden xl:flex flex-col items-center justify-between py-12 w-11 border-r border-[#C5BEB0] dark:border-[#312E29] bg-[#E5DEC9]/60 dark:bg-[#1C1A16] shrink-0 select-none transition-colors duration-200"
           >
-            <span
-              className="w-2.5 h-7 rounded-[1px] shrink-0"
-              style={{ backgroundColor: 'var(--active-accent)' }}
-              aria-hidden="true"
-            />
-            <div>
-              <div className="font-mono text-xs font-bold leading-none text-[var(--ink-primary)]">
-                {COURSE_META.code} · FAT SPRINT
-              </div>
-              <div className="text-xs font-semibold text-[var(--ink-secondary)] leading-tight">
-                Operating Systems · VITC
-              </div>
+            <div className="binder-hole" />
+            <div className="binder-hole" />
+            <div
+              className="font-mono text-[10px] tracking-[0.22em] text-[#6E695D] dark:text-[#8F897D] uppercase whitespace-nowrap"
+              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            >
+              BACSE106 · OPERATING SYSTEMS · VIT CHENNAI
             </div>
-          </button>
+            <div className="binder-hole" />
+          </aside>
 
-          {/* Zone 2: Desktop 7-View Primary Nav */}
-          <nav aria-label="Primary manual sections" className="hidden lg:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const active = activeView === item.id;
-              return (
+          {/* Primary Manual Sheet Content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Top Manual Specification Header (Strict 3-Zone Contract) */}
+            <header className="sticky top-0 z-30 bg-[#EAE4D7]/95 dark:bg-[#171613]/95 backdrop-blur-xs border-b border-[#1C1B18] dark:border-[#312E29] transition-colors duration-200">
+              <div className={`${containerClass} h-14 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6`}>
+                {/* Zone 1: Course Identity Stamp */}
                 <button
-                  key={item.id}
                   type="button"
-                  onClick={() => handleNavigateView(item.id)}
-                  className={`px-2.5 py-1.5 text-xs font-semibold rounded-[2px] border inline-flex items-center gap-1.5 transition-colors ${
-                    active
-                      ? 'bg-[var(--ink-primary)] text-[var(--bg-paper)] border-[var(--ink-primary)]'
-                      : 'bg-transparent text-[var(--ink-secondary)] border-transparent hover:bg-[var(--bg-recessed)] hover:text-[var(--ink-primary)]'
-                  }`}
+                  onClick={() => handleNavigateView('standing')}
+                  className="flex items-center gap-2 sm:gap-2.5 text-left shrink-0 group rounded-[3px] focus:outline-none focus:ring-1 focus:ring-[#1C1B18]"
+                  title="Return to Diagnostic Standing"
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
+                  <span
+                    className="w-2.5 h-7 sm:h-8 rounded-[2px] shrink-0 border border-[#1C1B18]/30 dark:border-[#312E29]"
+                    style={{ backgroundColor: activeAccentHex }}
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <div className="text-xs sm:text-sm font-display font-extrabold tracking-[0.06em] uppercase text-[#1C1B18] dark:text-[#E6E2DA] leading-none">
+                      {COURSE_META.code} · FAT SPRINT
+                    </div>
+                    <div className="text-[10px] sm:text-[11px] font-mono font-medium text-[#6E695D] dark:text-[#8F897D] tracking-tight leading-tight mt-0.5 whitespace-nowrap">
+                      {COURSE_META.title} · {COURSE_META.institution}
+                    </div>
+                  </div>
                 </button>
-              );
-            })}
-          </nav>
 
-          {/* Zone 3: Utilities */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div className="hidden sm:block">
-              <ExamCountdown variant="compact" />
-            </div>
+                {/* Zone 2: Mode Navigation Bar (Desktop lg+) */}
+                <nav aria-label="Primary manual sections" className="hidden lg:flex items-center gap-1.5 xl:gap-3">
+                  {NAV_ITEMS.map((item) => {
+                    const isActive = activeView === item.id;
+                    const Icon = item.icon;
+                    const activeBorder = item.isStanding
+                      ? 'text-[#2E6F5E] dark:text-[#4CA38C] font-bold border-[#2E6F5E] dark:border-[#4CA38C]'
+                      : 'text-[#1C1B18] dark:text-[#FAF7F0] font-semibold border-[#1C1B18] dark:border-[#FAF7F0]';
+                    const idleStyle = item.isStanding
+                      ? 'text-[#2E6F5E] dark:text-[#4CA38C] border-transparent hover:border-[#2E6F5E]/50 font-semibold'
+                      : 'text-[#434038] dark:text-[#B5AEA0] border-transparent hover:text-[#1C1B18] dark:hover:text-[#FAF7F0]';
 
-            {sortedWeakTopics.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMockSubView('weak');
-                  handleNavigateView('mock');
-                }}
-                className="px-2 py-1 text-xs font-mono font-bold rounded-[2px] border border-[var(--div-danger)] bg-[var(--bg-paper)] text-[var(--div-danger)] inline-flex items-center gap-1 tabular-nums"
-                title="Open Weak Topics Recovery Queue"
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleNavigateView(item.id)}
+                        aria-current={isActive ? 'page' : undefined}
+                        aria-label={
+                          item.isMock && sortedWeakTopics.length > 0
+                            ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
+                            : undefined
+                        }
+                        title={
+                          item.isMock && sortedWeakTopics.length > 0
+                            ? `FAT Mock (${sortedWeakTopics.length} unresolved weak topics)`
+                            : undefined
+                        }
+                        className={`inline-flex items-center gap-1.5 py-1 text-xs font-mono uppercase tracking-[0.08em] step-hinge whitespace-nowrap shrink-0 border-b-2 ${
+                          isActive ? activeBorder : idleStyle
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        {item.isMock && (
+                          <span className="relative inline-flex items-center shrink-0">
+                            {sortedWeakTopics.length > 0 && (
+                              <span
+                                data-testid="nav-weak-topics-badge"
+                                aria-hidden="true"
+                                className="absolute -top-2 -right-2.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-mono font-extrabold leading-none inline-flex items-center justify-center border border-[#FAF7F0] tabular-nums"
+                              >
+                                {sortedWeakTopics.length}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                {/* Zone 3: Live Countdown Timer, Formula (^K) Trigger, Theme Toggle & Primary CTA */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <div className="hidden md:block">
+                    <ExamCountdown variant="compact" />
+                  </div>
+
+                  {/* Formula (^K) Modal Trigger */}
+                  <button
+                    type="button"
+                    data-testid="formula-quickref-trigger"
+                    onClick={() => setFormulaDrawerOpen(true)}
+                    title="Open Formula Quick-Reference (Ctrl+K / Cmd+K)"
+                    aria-label="Open Formula Quick-Reference"
+                    className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-mono font-semibold uppercase tracking-[0.05em] bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] text-[#1C1B18] dark:text-[#E6E2DA] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
+                  >
+                    <Sigma className="w-3.5 h-3.5 text-[#E06D2B] dark:text-[#EF8347]" aria-hidden="true" />
+                    <span className="hidden xl:inline">Formulas</span>
+                    <kbd className="hidden sm:inline px-1 py-0.2 bg-[#EAE4D7] dark:bg-[#171613] border border-[#C5BEB0] dark:border-[#312E29] rounded-[2px] text-[10px] text-[#6E695D] dark:text-[#8F897D]">
+                      ^K
+                    </kbd>
+                  </button>
+
+                  {/* Theme Toggle */}
+                  <button
+                    type="button"
+                    data-testid="dark-mode-toggle"
+                    onClick={handleToggleDarkMode}
+                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                    aria-pressed={darkMode}
+                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                    className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-[#FAF7F0] dark:bg-[#201E1A] hover:bg-[#F4EFE4] dark:hover:bg-[#2A2722] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge shrink-0"
+                  >
+                    {darkMode ? (
+                      <Sun className="w-4 h-4 text-[#E5B82E]" aria-hidden="true" />
+                    ) : (
+                      <Moon className="w-4 h-4 text-[#1C1B18]" aria-hidden="true" />
+                    )}
+                  </button>
+
+                  {/* Primary FAT Mock CTA */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMockSubView(sortedWeakTopics.length > 0 ? 'weak' : 'mcq');
+                      handleNavigateView('mock');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-mono font-semibold uppercase tracking-[0.05em] sm:tracking-[0.06em] text-[#1C1B18] bg-[#E5B82E] hover:bg-[#d8aa22] border border-[#1C1B18] dark:border-[#3A3731] rounded-[4px] step-hinge whitespace-nowrap shrink-0"
+                  >
+                    <span>Start FAT Mock →</span>
+                    {sortedWeakTopics.length > 0 && (
+                      <span
+                        data-testid="header-weak-topics-badge"
+                        aria-hidden="true"
+                        className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono font-extrabold leading-none inline-flex items-center justify-center tabular-nums"
+                      >
+                        {sortedWeakTopics.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Mobile / Tablet Scrollable Navigation Bar */}
+            <nav
+              aria-label="Mobile manual sections"
+              className="lg:hidden bg-[#F4EFE4] dark:bg-[#1A1815] border-b border-[#1C1B18] dark:border-[#312E29] px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-print"
+            >
+              {NAV_ITEMS.map((item) => {
+                const isActive = activeView === item.id;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleNavigateView(item.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono uppercase tracking-wider rounded-[3px] whitespace-nowrap shrink-0 border ${
+                      isActive
+                        ? item.isStanding
+                          ? 'bg-[#2E6F5E] dark:bg-[#4CA38C] text-[#FAF7F0] border-[#1C1B18] dark:border-[#312E29] font-semibold'
+                          : 'bg-[#E5B82E] text-[#1C1B18] border-[#1C1B18] dark:border-[#312E29] font-semibold'
+                        : item.isStanding
+                          ? 'bg-transparent text-[#2E6F5E] dark:text-[#4CA38C] border-[#2E6F5E]/40 dark:border-[#4CA38C]/40 font-semibold'
+                          : 'bg-transparent text-[#434038] dark:text-[#B5AEA0] border-transparent hover:border-[#C5BEB0]'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>{item.label}</span>
+                    {item.isMock && sortedWeakTopics.length > 0 && (
+                      <span
+                        data-testid="mobile-nav-weak-topics-badge"
+                        aria-hidden="true"
+                        className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono font-extrabold leading-none inline-flex items-center justify-center tabular-nums"
+                      >
+                        {sortedWeakTopics.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Main Manual Body Content */}
+            <main
+              id="main-content"
+              className={`flex-1 ${containerClass} py-6 sm:py-8`}
+              style={{
+                backgroundImage:
+                  'linear-gradient(to bottom, color-mix(in srgb, var(--active-accent) calc(var(--leaf-tint-alpha) * 100%), transparent) 0px, transparent 140px)',
+              }}
+            >
+              {activeView === 'standing' && (
+                <StandingView
+                  standingResults={standingResults}
+                  onSaveModuleResult={(res) =>
+                    setStandingResults((prev) => ({ ...prev, [res.moduleId]: res }))
+                  }
+                  onLogWeakTopic={handleLogWeakTopic}
+                  onNavigateView={handleNavigateView}
+                />
+              )}
+
+              {activeView === 'sprint' && (
+                <SprintPlannerView
+                  readiness={readiness}
+                  masteredTopicIds={masteredTopicIds}
+                  completedSprintBlockIds={completedSprintBlockIds}
+                  highYieldOnly={highYieldOnly}
+                  onToggleHighYield={() => setHighYieldOnly((v) => !v)}
+                  onToggleSprintBlock={(id) =>
+                    setCompletedSprintBlockIds((prev) =>
+                      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                    )
+                  }
+                  onResetSprintBlocks={() => setCompletedSprintBlockIds([])}
+                  onNavigateView={handleNavigateView}
+                />
+              )}
+
+              {activeView === 'syllabus' && (
+                <SyllabusView
+                  activeModuleId={activeModuleId}
+                  focusedTopicId={focusedTopicId}
+                  masteredTopicIds={masteredTopicIds}
+                  onSelectModule={(m) => {
+                    setActiveModuleId(m);
+                    setFocusedTopicId(null);
+                  }}
+                  onToggleMastered={handleToggleMastered}
+                  onLogWeakTopic={handleLogWeakTopic}
+                />
+              )}
+
+              {activeView === 'reference' && (
+                <ReferenceView
+                  srsStates={srsStates}
+                  srsProfile={srsProfile}
+                  onChangeSrsProfile={setSrsProfile}
+                  onRateCard={handleRateSrsCard}
+                />
+              )}
+
+              {activeView === 'prediction' && (
+                <PredictionView
+                  onOpenTopicInSyllabus={(mId, tId) =>
+                    handleNavigateView('syllabus', { moduleId: mId, topicId: tId })
+                  }
+                />
+              )}
+
+              {activeView === 'labs' && (
+                <InteractiveLabsView
+                  initialLabTab={labPresetTab}
+                  onLogWeakTopic={handleLogWeakTopic}
+                />
+              )}
+
+              {activeView === 'mock' && (
+                <FatMockView
+                  initialSubView={mockSubView}
+                  rubricScores={rubricScores}
+                  onUpdateRubricScore={(paperId, subPartId, score) =>
+                    setRubricScores((prev) => ({
+                      ...prev,
+                      [paperId]: { ...(prev[paperId] ?? {}), [subPartId]: score },
+                    }))
+                  }
+                  mcqAnswers={mcqAnswers}
+                  onAnswerMcq={(mcqId, chosenIndex) =>
+                    setMcqAnswers((prev) => ({ ...prev, [mcqId]: chosenIndex }))
+                  }
+                  onResetMcq={() => setMcqAnswers({})}
+                  weakTopics={sortedWeakTopics}
+                  onLogWeakTopic={handleLogWeakTopic}
+                  onMarkWeakReviewed={(topicId, resolve) =>
+                    setWeakTopicsMap((prev) => markWeakTopicReviewed(prev, topicId, resolve))
+                  }
+                  onOpenTopicInSyllabus={(mId, tId) =>
+                    handleNavigateView('syllabus', { moduleId: mId, topicId: tId })
+                  }
+                  onOpenLabPreset={(tab) => {
+                    setLabPresetTab(tab);
+                    handleNavigateView('labs');
+                  }}
+                />
+              )}
+            </main>
+
+            {/* Technical Reference Manual Footer */}
+            <footer className="border-t border-[#1C1B18] dark:border-[#312E29] bg-[#E5DEC9]/70 dark:bg-[#1A1815] transition-colors duration-200">
+              <div
+                className={`${containerClass} py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono text-[#434038] dark:text-[#8F897D]`}
               >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                {sortedWeakTopics.length}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setFormulaDrawerOpen(true)}
-              className="px-2 py-1 text-xs font-mono font-semibold rounded-[2px] border border-[var(--rule-strong)] bg-[var(--bg-paper)] text-[var(--ink-primary)] hover:bg-[var(--bg-recessed)] inline-flex items-center gap-1"
-              title="Open Formula Quick-Reference (Ctrl+K)"
-            >
-              <Sigma className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Formulas</span>
-              <kbd className="hidden xl:inline text-[10px] text-[var(--ink-muted)]">^K</kbd>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDarkMode((d) => !d)}
-              className="p-1.5 rounded-[2px] border border-[var(--rule-strong)] bg-[var(--bg-paper)] text-[var(--ink-primary)] hover:bg-[var(--bg-recessed)]"
-              aria-label={darkMode ? 'Switch to light manual paper mode' : 'Switch to dark warm-obsidian mode'}
-            >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
+                <span>
+                  {COURSE_META.code} {COURSE_META.title} · {COURSE_META.institution} · {COURSE_META.examDateDisplay}
+                </span>
+                <span>TECHNICAL REFERENCE MANUAL (MODULES 1–5 · 45 LECTURE HOURS)</span>
+              </div>
+            </footer>
           </div>
         </div>
 
-        {/* Mobile / Tablet Scrollable View Bar */}
-        <nav
-          aria-label="Mobile manual sections"
-          className="lg:hidden flex items-center gap-1 overflow-x-auto px-3 py-1.5 border-t border-[var(--rule-hairline)] bg-[var(--bg-sheet)]"
-        >
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = activeView === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNavigateView(item.id)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-[2px] border inline-flex items-center gap-1 whitespace-nowrap shrink-0 ${
-                  active
-                    ? 'bg-[var(--ink-primary)] text-[var(--bg-paper)] border-[var(--ink-primary)]'
-                    : 'bg-[var(--bg-paper)] text-[var(--ink-secondary)] border-[var(--rule-hairline)]'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-      </header>
-
-      {/* Physical 3-Column Reference Binder Frame */}
-      <div className="flex-1 w-full max-w-[1440px] mx-auto px-0 sm:px-4 py-0 sm:py-5 flex">
-        {/* Column 1: 44px Punched Binder Spine (lg+) */}
+        {/* Right Stepped Fore-Edge Division Tab Rail (Proportional Heights Scaled to Module Lecture Hours) */}
         <aside
-          aria-hidden="true"
-          className="hidden lg:flex flex-col items-center justify-between py-16 w-[44px] shrink-0 binder-spine rounded-l-[3px] border-y border-l border-[var(--rule-strong)]"
+          aria-label="Manual division tab rail"
+          className="hidden xl:flex flex-col w-9 pt-14 shrink-0 select-none no-print"
         >
-          <div className="binder-hole" />
-          <div className="binder-hole" />
-          <div className="binder-hole" />
-        </aside>
-
-        {/* Column 2: Main Manual Sheet */}
-        <main
-          id="main-content"
-          className="flex-1 min-w-0 bg-[var(--bg-sheet)] border-y sm:border border-[var(--rule-strong)] px-4 sm:px-7 py-6 shadow-xl"
-          style={{
-            backgroundImage:
-              'linear-gradient(to bottom, color-mix(in srgb, var(--active-accent) calc(var(--leaf-tint-alpha) * 100%), transparent) 0px, transparent 140px)',
-          }}
-        >
-          {activeView === 'standing' && (
-            <StandingView
-              standingResults={standingResults}
-              onSaveModuleResult={(res) =>
-                setStandingResults((prev) => ({ ...prev, [res.moduleId]: res }))
-              }
-              onLogWeakTopic={handleLogWeakTopic}
-              onNavigateView={handleNavigateView}
-            />
-          )}
-
-          {activeView === 'sprint' && (
-            <SprintPlannerView
-              readiness={readiness}
-              masteredTopicIds={masteredTopicIds}
-              completedSprintBlockIds={completedSprintBlockIds}
-              highYieldOnly={highYieldOnly}
-              onToggleHighYield={() => setHighYieldOnly((v) => !v)}
-              onToggleSprintBlock={(id) =>
-                setCompletedSprintBlockIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                )
-              }
-              onResetSprintBlocks={() => setCompletedSprintBlockIds([])}
-              onNavigateView={handleNavigateView}
-            />
-          )}
-
-          {activeView === 'syllabus' && (
-            <SyllabusView
-              activeModuleId={activeModuleId}
-              focusedTopicId={focusedTopicId}
-              masteredTopicIds={masteredTopicIds}
-              onSelectModule={(m) => {
-                setActiveModuleId(m);
-                setFocusedTopicId(null);
-              }}
-              onToggleMastered={handleToggleMastered}
-              onLogWeakTopic={handleLogWeakTopic}
-            />
-          )}
-
-          {activeView === 'reference' && (
-            <ReferenceView
-              srsStates={srsStates}
-              srsProfile={srsProfile}
-              onChangeSrsProfile={setSrsProfile}
-              onRateCard={handleRateSrsCard}
-            />
-          )}
-
-          {activeView === 'prediction' && (
-            <PredictionView
-              onOpenTopicInSyllabus={(mId, tId) =>
-                handleNavigateView('syllabus', { moduleId: mId, topicId: tId })
-              }
-            />
-          )}
-
-          {activeView === 'labs' && (
-            <InteractiveLabsView
-              initialLabTab={labPresetTab}
-              onLogWeakTopic={handleLogWeakTopic}
-            />
-          )}
-
-          {activeView === 'mock' && (
-            <FatMockView
-              initialSubView={mockSubView}
-              rubricScores={rubricScores}
-              onUpdateRubricScore={(paperId, subPartId, score) =>
-                setRubricScores((prev) => ({
-                  ...prev,
-                  [paperId]: { ...(prev[paperId] ?? {}), [subPartId]: score },
-                }))
-              }
-              mcqAnswers={mcqAnswers}
-              onAnswerMcq={(mcqId, chosenIndex) =>
-                setMcqAnswers((prev) => ({ ...prev, [mcqId]: chosenIndex }))
-              }
-              onResetMcq={() => setMcqAnswers({})}
-              weakTopics={sortedWeakTopics}
-              onLogWeakTopic={handleLogWeakTopic}
-              onMarkWeakReviewed={(topicId, resolve) =>
-                setWeakTopicsMap((prev) => markWeakTopicReviewed(prev, topicId, resolve))
-              }
-              onOpenTopicInSyllabus={(mId, tId) =>
-                handleNavigateView('syllabus', { moduleId: mId, topicId: tId })
-              }
-              onOpenLabPreset={(tab) => {
-                setLabPresetTab(tab);
-                handleNavigateView('labs');
-              }}
-            />
-          )}
-        </main>
-
-        {/* Column 3: 36px Stepped Fore-Edge Acetate Division Rail (xl+) */}
-        <aside
-          aria-label="Binder division fore-edge tabs"
-          className="hidden xl:flex flex-col gap-1.5 pt-4 w-[36px] shrink-0 no-print"
-        >
-          {Object.values(DIVISION_WHEEL).filter((d) => d.id !== 'standing').map((tab) => {
-            const isModule = ['m1', 'm2', 'm3', 'm4', 'm5'].includes(tab.id);
-            const isActive =
-              (isModule && activeView === 'syllabus' && activeModuleId === tab.id) ||
-              (tab.id === 'labs' && activeView === 'labs') ||
-              (tab.id === 'mock' && activeView === 'mock');
+          {foreEdgeTabs.map((tab) => {
+            const bg = darkMode ? tab.darkHex : tab.hex;
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => {
-                  if (isModule) {
-                    handleNavigateView('syllabus', { moduleId: tab.id });
-                  } else if (tab.id === 'labs') {
-                    handleNavigateView('labs');
-                  } else if (tab.id === 'mock') {
-                    handleNavigateView('mock');
-                  }
-                }}
-                style={{
-                  backgroundColor: isActive
-                    ? darkMode
-                      ? tab.darkHex
-                      : tab.hex
-                    : 'var(--bg-board)',
-                  color: isActive ? '#111111' : 'var(--ink-secondary)',
-                }}
-                className="fore-edge-tab h-20 w-[34px] rounded-r-[3px] border-y border-r border-[var(--rule-strong)] font-mono text-[10px] font-bold flex items-center justify-center tracking-wide hover:translate-x-0.5"
-                title={tab.label}
+                onClick={tab.onClick}
+                title={`Switch to ${tab.label}`}
+                style={{ backgroundColor: bg }}
+                className={`fore-edge-tab ${tab.heightClass} relative flex flex-col items-center justify-between py-2.5 border-y border-r border-[#1C1B18] dark:border-[#312E29] rounded-r-[6px] step-hinge ${
+                  tab.isActive ? 'w-9 -ml-px z-10 font-bold' : 'w-7 opacity-90 hover:w-8 hover:opacity-100'
+                } ${tab.lightText ? 'text-[#FAF7F0]' : 'text-[#1C1B18]'}`}
               >
-                {tab.code}
+                {/* Punched Eyelet Circle */}
+                <span
+                  className="w-2 h-2 rounded-full bg-[#FAF7F0] border border-[#1C1B18]/40 shrink-0"
+                  aria-hidden="true"
+                />
+                <span
+                  className="font-mono text-[10px] tracking-[0.14em] uppercase whitespace-nowrap tabular-nums"
+                  style={{ writingMode: 'vertical-rl' }}
+                >
+                  {tab.label}
+                </span>
               </button>
             );
           })}
         </aside>
       </div>
 
-      {/* Global Overlays */}
+      {/* Global Floating Formula Quick Reference Widget (Ctrl+K / Cmd+K) */}
       <FormulaQuickRef
         open={formulaDrawerOpen}
         onClose={() => setFormulaDrawerOpen(false)}
@@ -599,6 +840,7 @@ export default function App() {
         }}
       />
 
+      {/* Confetti Overlay for Topic Mastery Celebrations */}
       <MasteryConfettiOverlay
         particles={confettiParticles}
         onDone={() => setConfettiParticles([])}
